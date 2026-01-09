@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ConsumerTest {
 
-    private static final int QUEUE_CAPACITY = 204800; // 队列大小 1MB
+    private static final int QUEUE_CAPACITY = 2048; // 队列大小 1MB
     private static final int MESSAGE_COUNT = 204800; // 消息总数
     private static final int BUSINESS_THREAD_COUNT = 5; // 业务处理线程数
     private static final String TOPIC = "topic1";
@@ -74,7 +74,7 @@ public class ConsumerTest {
                 }
             });
         }
-        boolean finished = consumerLatch.await(20, TimeUnit.SECONDS);
+        boolean finished = consumerLatch.await(10, TimeUnit.SECONDS);
         System.out.println("消费者结束");
         executor.shutdown();
         long totalDuration = System.currentTimeMillis() - startTime;
