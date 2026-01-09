@@ -1,6 +1,7 @@
 package org.sunyaxing.imagine.jmemqueue;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -26,12 +27,18 @@ public class JSharedMemQueue {
      * @param capacity 队列容量（SMG个数）
      */
     public JSharedMemQueue(String fileName, int capacity) throws Exception {
+        this(fileName, capacity, false);
+    }
+
+    public JSharedMemQueue(String fileName, int capacity, boolean overwrite) throws IOException {
         String parentDir = System.getProperty("java.io.tmpdir") + File.separator + "JSMQ" + File.separator;
         new File(parentDir).mkdir();
         String path = parentDir + "ipc_" + fileName + ".dat";
+        File file = new File(path);
+        if (overwrite) file.delete();
         System.out.println(path);
-        RandomAccessFile file = new RandomAccessFile(path, "rw");
-        FileChannel channel = file.getChannel();
+        RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
+        FileChannel channel = accessFile.getChannel();
         this.capacity = capacity;
         this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, (long) capacity * JSharedMemSegment.SMG_SIZE);
         this.readIndex = new AtomicInteger(0);
@@ -54,16 +61,16 @@ public class JSharedMemQueue {
         }
         // 遍历环形缓冲区应该在内部执行，如果仅返回false表示插入失败,外部不知道队列是否被占满
         // 尝试写入，最多重试capacity次（遍历整个环形缓冲区）
-        for (int attempts = 0; attempts < capacity ; attempts++) {
+        for (int attempts = 0; attempts < capacity; attempts++) {
             // 原子地获取并递增写索引
             // 使用 CAS 防止多线程冲突
             int currentIndex = writeIndex.getAndUpdate(old -> (old + JSharedMemSegment.SMG_SIZE) % (capacity * JSharedMemSegment.SMG_SIZE));
-            // 当前SMG
-            JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
             // 读取当前状态
-            int state = segment.getState();
+            int state = JSharedMemSegment.getCurrentState(sharedMemory, currentIndex);
             // 如果可写（状态为0）
             if (state == JSharedMemSegment.STATE_IDLE) {
+                // 当前SMG
+                JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
                 // 使用CAS将状态改为写占用
                 if (segment.compareAndSetState(state, JSharedMemSegment.STATE_WRITING)) {
                     try {
@@ -93,12 +100,12 @@ public class JSharedMemQueue {
      */
     public byte[] dequeue() {
         // 遍历一遍环形缓冲区,直到取到数据
-        for (int attempts = 0; attempts < capacity ; attempts++) {
+        for (int attempts = 0; attempts < capacity; attempts++) {
             int currentIndex = readIndex.getAndUpdate(old -> (old + JSharedMemSegment.SMG_SIZE) % (capacity * JSharedMemSegment.SMG_SIZE));
-            JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
-            int state = segment.getState();
+            int state = JSharedMemSegment.getCurrentState(sharedMemory, currentIndex);
             // 如果可读（状态为2）
             if (state == JSharedMemSegment.STATE_READABLE) {
+                JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
                 // 使用CAS将状态改为读占用
                 if (segment.compareAndSetState(state, JSharedMemSegment.STATE_READING)) {
                     // 读取状态信息

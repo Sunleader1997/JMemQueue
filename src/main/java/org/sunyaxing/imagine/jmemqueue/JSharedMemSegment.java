@@ -67,6 +67,13 @@ public class JSharedMemSegment {
     }
 
     /**
+     * 获取指定位置的状态
+     */
+    public static int getCurrentState(ByteBuffer buffer, int offset) {
+        return buffer.getInt(offset);
+    }
+
+    /**
      * 使用CAS方式尝试将状态从expectedState改为newState
      */
     public boolean compareAndSetState(int expectedState, int newState) {
@@ -114,8 +121,7 @@ public class JSharedMemSegment {
         if (data.length > MAX_CONTENT_SIZE) {
             throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
         }
-        buffer.position(offset + CONTENT_OFFSET);
-        buffer.put(data);
+        buffer.put(offset + CONTENT_OFFSET, data);
     }
 
     /**
@@ -126,8 +132,7 @@ public class JSharedMemSegment {
             throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
         }
         byte[] data = new byte[size];
-        buffer.position(offset + CONTENT_OFFSET);
-        buffer.get(data);
+        buffer.get(offset + CONTENT_OFFSET, data);
         return data;
     }
 
