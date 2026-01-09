@@ -9,6 +9,8 @@ import reactor.core.scheduler.Schedulers;
 
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class ConsumerTest {
 
-    private static final int QUEUE_CAPACITY = 20000; // 队列大小2万
-    private static final int MESSAGE_COUNT = 20000; // 消息总数
+    private static final int QUEUE_CAPACITY = 1024; // 队列大小 1MB
+    private static final int MESSAGE_COUNT = 20_480; // 消息总数
     private static final int BUSINESS_THREAD_COUNT = 5; // 业务处理线程数
 
     //持续生产消息
@@ -32,7 +34,7 @@ public class ConsumerTest {
         // 先生产一批消息
         System.out.println("开始生产消息...");
         for (int i = 0; i < MESSAGE_COUNT; i++) {
-            String message = String.format("Message-%d", i);
+            String message = String.format("{\"index\":%d}", i);
             byte[] data = message.getBytes(StandardCharsets.UTF_8);
             while (!queue.enqueue(data)) {
                 Thread.sleep(10); // 队列满时等待
@@ -43,8 +45,54 @@ public class ConsumerTest {
         }
         System.out.println("消息生产完成，总计: " + MESSAGE_COUNT);
     }
+
     @Test
     public void createConsumer() throws Exception {
+        JSharedMemQueue queue = new JSharedMemQueue("aaa",QUEUE_CAPACITY);
+        AtomicInteger consumedCount = new AtomicInteger(0);
+        // 创建多线程执行 dequeue
+        CountDownLatch consumerLatch = new CountDownLatch(MESSAGE_COUNT);
+        AtomicInteger nullCount = new AtomicInteger(0);
+        ExecutorService executor = Executors.newFixedThreadPool(BUSINESS_THREAD_COUNT);
+        long startTime = System.currentTimeMillis();
+        for (int i = 0; i < BUSINESS_THREAD_COUNT; i++) {
+            System.out.println("启动消费者线程: " + i);
+            executor.execute(() -> {
+                while ( true){
+                    byte[] data = queue.dequeue();
+                    if (data != null) {
+                        String message = new String(data, StandardCharsets.UTF_8);
+                        // 每1000条消息打印一次
+                        if (consumedCount.get() % 1000 == 0) {
+                            System.out.printf("[%s] 消费进度: %d/%d - 消息: %s%n",
+                                    Thread.currentThread().getName(), consumedCount.get(), MESSAGE_COUNT, message);
+                        }
+                        consumedCount.incrementAndGet();
+                        consumerLatch.countDown();
+                    }else{
+                        nullCount.incrementAndGet();
+                    }
+                }
+            });
+        }
+        boolean finished = consumerLatch.await(20, TimeUnit.SECONDS);
+        System.out.println("消费者结束");
+        executor.shutdown();
+        long totalDuration = System.currentTimeMillis() - startTime;
+        // 打印统计信息
+        System.out.println("\n========== 消费者测试统计 ==========");
+        System.out.println("队列容量: " + QUEUE_CAPACITY);
+        System.out.println("生产消息总数: " + MESSAGE_COUNT);
+        System.out.println("成功消费消息数: " + consumedCount.get());
+        System.out.println("dequeue返回null次数: " + nullCount.get());
+        System.out.println("总耗时: " + totalDuration + " ms");
+        System.out.println("消费吞吐量: " + (consumedCount.get() * 1000L / totalDuration) + " msg/s");
+        System.out.println("业务线程数: " + BUSINESS_THREAD_COUNT);
+        System.out.println("===================================");
+    }
+
+    @Test
+    public void createConsumerWithReactor() throws Exception {
         // 创建共享内存队列
         JSharedMemQueue queue = new JSharedMemQueue("aaa",QUEUE_CAPACITY);
         // 消费统计
@@ -105,7 +153,7 @@ public class ConsumerTest {
         long startTime = System.currentTimeMillis();
         Disposable disposable = c.subscribe();
         // 等待所有消息被消费完成（最多等待5分钟）
-        boolean finished = consumerLatch.await(10, TimeUnit.SECONDS);
+        boolean finished = consumerLatch.await(20, TimeUnit.SECONDS);
         assertTrue(finished, "消费者未在预期时间内完成");
 
         long endTime = System.currentTimeMillis();

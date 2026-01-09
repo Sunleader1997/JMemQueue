@@ -33,9 +33,7 @@ public class JSharedMemQueue {
         RandomAccessFile file = new RandomAccessFile(path, "rw");
         FileChannel channel = file.getChannel();
         this.capacity = capacity;
-        // 创建映射的字节缓冲区
         this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, (long) capacity * JSharedMemSegment.SMG_SIZE);
-//        this.sharedMemory = ByteBuffer.allocateDirect(capacity * JSharedMemSegment.SMG_SIZE);
         this.readIndex = new AtomicInteger(0);
         this.writeIndex = new AtomicInteger(0);
     }
@@ -56,7 +54,7 @@ public class JSharedMemQueue {
         }
         // 遍历环形缓冲区应该在内部执行，如果仅返回false表示插入失败,外部不知道队列是否被占满
         // 尝试写入，最多重试capacity次（遍历整个环形缓冲区）
-        for (int attempts = 0; attempts < capacity * 2; attempts++) {
+        for (int attempts = 0; attempts < capacity ; attempts++) {
             // 原子地获取并递增写索引
             // 使用 CAS 防止多线程冲突
             int currentIndex = writeIndex.getAndUpdate(old -> (old + JSharedMemSegment.SMG_SIZE) % (capacity * JSharedMemSegment.SMG_SIZE));
@@ -95,7 +93,7 @@ public class JSharedMemQueue {
      */
     public byte[] dequeue() {
         // 遍历一遍环形缓冲区,直到取到数据
-        for (int attempts = 0; attempts < capacity * 2; attempts++) { // TODO 为什么是*2?
+        for (int attempts = 0; attempts < capacity ; attempts++) {
             int currentIndex = readIndex.getAndUpdate(old -> (old + JSharedMemSegment.SMG_SIZE) % (capacity * JSharedMemSegment.SMG_SIZE));
             JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
             int state = segment.getState();

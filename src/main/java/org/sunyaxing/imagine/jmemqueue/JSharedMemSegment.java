@@ -5,8 +5,6 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * 一个SMG
- * <p>
- * TODO 需要加入下一个数据的索引
  */
 public class JSharedMemSegment {
     /**
