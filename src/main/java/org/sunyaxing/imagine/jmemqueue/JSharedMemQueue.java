@@ -91,7 +91,7 @@ public class JSharedMemQueue implements Closeable {
     }
 
     public byte[] dequeue() {
-        return dequeue(10);
+        return dequeue(1);
     }
 
     /**
@@ -122,7 +122,7 @@ public class JSharedMemQueue implements Closeable {
                     throw e;
                 }
             }
-            // 如果超时就挂起，防止CPU空转
+            // 如果超时就挂起，降低 CPU 空转
             if (timeout || (timeoutMs > 0 && System.currentTimeMillis() - startTime > timeoutMs)) {
                 try {
                     Thread.sleep(timeoutMs);
