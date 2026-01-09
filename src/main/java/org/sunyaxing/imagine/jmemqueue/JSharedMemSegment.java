@@ -1,7 +1,9 @@
 package org.sunyaxing.imagine.jmemqueue;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.nio.ByteOrder;
 
 /**
  * 一个SMG
@@ -52,51 +54,44 @@ public class JSharedMemSegment {
     private final ByteBuffer buffer; // 整个内存分区
     private final int offset; // 当前SMG的起始偏移量
     /**
-     * 使用volatile保证可见性
+     * VarHandle用于对ByteBuffer进行CAS操作
      */
-    private volatile int state;
-    /**
-     * CAS更新器
-     */
-    private static final AtomicIntegerFieldUpdater<JSharedMemSegment> STATE_UPDATER = AtomicIntegerFieldUpdater.newUpdater(JSharedMemSegment.class, "state");
+    private static final VarHandle INT_HANDLE = MethodHandles.byteBufferViewVarHandle(
+            int[].class,
+            ByteOrder.nativeOrder()
+    );
 
     public JSharedMemSegment(ByteBuffer buffer, int offset) {
         this.buffer = buffer;
         this.offset = offset;
-        this.state = buffer.getInt(offset + STATE_OFFSET);
     }
 
     /**
      * 获取指定位置的状态
      */
     public static int getCurrentState(ByteBuffer buffer, int offset) {
-        return buffer.getInt(offset);
+        return (int) INT_HANDLE.getVolatile(buffer, offset + STATE_OFFSET);
     }
 
     /**
      * 使用CAS方式尝试将状态从expectedState改为newState
      */
     public boolean compareAndSetState(int expectedState, int newState) {
-        if (STATE_UPDATER.compareAndSet(this, expectedState, newState)) {
-            buffer.putInt(offset + STATE_OFFSET, newState);
-            return true;
-        }
-        return false;
+        return INT_HANDLE.compareAndSet(buffer, offset + STATE_OFFSET, expectedState, newState);
     }
 
     /**
      * 读取状态
      */
     public int getState() {
-        return buffer.getInt(offset);
+        return (int) INT_HANDLE.getVolatile(buffer, offset + STATE_OFFSET);
     }
 
     /**
      * 设置状态
      */
     public void setState(int newState) {
-        this.state = newState;
-        buffer.putInt(offset, newState);
+        INT_HANDLE.setVolatile(buffer, offset + STATE_OFFSET, newState);
     }
 
     /**

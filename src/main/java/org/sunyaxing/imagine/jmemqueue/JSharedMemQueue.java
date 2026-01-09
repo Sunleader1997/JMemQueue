@@ -1,5 +1,6 @@
 package org.sunyaxing.imagine.jmemqueue;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -7,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class JSharedMemQueue {
+public class JSharedMemQueue implements Closeable {
 
     private final ByteBuffer sharedMemory; // 整个共享内存
     private final int capacity; // 队列容量（SMG个数）
@@ -19,6 +20,7 @@ public class JSharedMemQueue {
      * 写索引（字节偏移量）
      */
     private final AtomicInteger writeIndex;
+    private final FileChannel channel;
 
     /**
      * 创建共享内存队列
@@ -38,9 +40,9 @@ public class JSharedMemQueue {
         if (overwrite) file.delete();
         System.out.println(path);
         RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
-        FileChannel channel = accessFile.getChannel();
+        this.channel = accessFile.getChannel();
         this.capacity = capacity;
-        this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, (long) capacity * JSharedMemSegment.SMG_SIZE);
+        this.sharedMemory = this.channel.map(FileChannel.MapMode.READ_WRITE, 0, (long) capacity * JSharedMemSegment.SMG_SIZE);
         this.readIndex = new AtomicInteger(0);
         this.writeIndex = new AtomicInteger(0);
     }
@@ -134,5 +136,12 @@ public class JSharedMemQueue {
      */
     public int getCapacity() {
         return capacity;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (channel != null) {
+            channel.close();
+        }
     }
 }
