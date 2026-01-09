@@ -90,6 +90,10 @@ public class JSharedMemQueue implements Closeable {
         return false;
     }
 
+    /**
+     * 阻塞获取数据
+     * @return
+     */
     public byte[] dequeue() {
         return dequeue(1);
     }
