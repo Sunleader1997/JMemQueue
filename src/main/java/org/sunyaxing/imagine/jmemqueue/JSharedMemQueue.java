@@ -22,11 +22,14 @@ public class JSharedMemQueue {
     /**
      * 创建共享内存队列
      *
-     * @param fileName     MappedByteBuffer 映射地址
+     * @param fileName MappedByteBuffer 映射地址
      * @param capacity 队列容量（SMG个数）
      */
     public JSharedMemQueue(String fileName, int capacity) throws Exception {
-        File path = File.createTempFile(fileName, ".tmp");
+        String parentDir = System.getProperty("java.io.tmpdir") + File.separator + "JSMQ" + File.separator;
+        new File(parentDir).mkdir();
+        String path = parentDir + "ipc_" + fileName + ".dat";
+        System.out.println(path);
         RandomAccessFile file = new RandomAccessFile(path, "rw");
         FileChannel channel = file.getChannel();
         this.capacity = capacity;
