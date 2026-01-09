@@ -12,43 +12,43 @@ public class JSharedMemSegment {
     /**
      * 单个SMG大小: 1KB
      */
-    public static final short SMG_SIZE = 1024;
+    public static final int SMG_SIZE = 1024;
     /**
      * 状态字段偏移量
      */
-    public static final byte STATE_OFFSET = 0; // 用1个字节表示状态已经足够 byte
+    public static final int STATE_OFFSET = 0;
     /**
      * 大小字段偏移量
      */
-    public static final byte SIZE_OFFSET = 1; // 用4个字节表示数据大小 int
+    public static final int SIZE_OFFSET = 4;
     /**
      * 内容字段偏移量
      */
-    public static final byte CONTENT_OFFSET = 5; // 用接下来的所有字节表示数据内容
+    public static final int CONTENT_OFFSET = 8;
     /**
      * 最大内容大小
      */
-    public static final short MAX_CONTENT_SIZE = SMG_SIZE - CONTENT_OFFSET; // 1024 - CONTENT_OFFSET 字节
+    public static final int MAX_CONTENT_SIZE = SMG_SIZE - CONTENT_OFFSET; // 1024 - CONTENT_OFFSET 字节
 
     /**
      * 状态：空闲
      */
-    public static final byte STATE_IDLE = 0;
+    public static final int STATE_IDLE = 0;
 
     /**
      * 状态：写占用
      */
-    public static final byte STATE_WRITING = 1;
+    public static final int STATE_WRITING = 1;
 
     /**
      * 状态：可读(写完毕)
      */
-    public static final byte STATE_READABLE = 2;
+    public static final int STATE_READABLE = 2;
 
     /**
      * 状态：读占用
      */
-    public static final byte STATE_READING = 3;
+    public static final int STATE_READING = 3;
 
 
     private final ByteBuffer buffer; // 整个内存分区
@@ -56,7 +56,7 @@ public class JSharedMemSegment {
     /**
      * 使用volatile保证可见性
      */
-    private volatile byte state;
+    private volatile int state;
     /**
      * CAS更新器
      */
@@ -65,15 +65,15 @@ public class JSharedMemSegment {
     public JSharedMemSegment(ByteBuffer buffer, int offset) {
         this.buffer = buffer;
         this.offset = offset;
-        this.state = buffer.get(offset + STATE_OFFSET);
+        this.state = buffer.getInt(offset + STATE_OFFSET);
     }
 
     /**
      * 使用CAS方式尝试将状态从expectedState改为newState
      */
-    public boolean compareAndSetState(int expectedState, byte newState) {
+    public boolean compareAndSetState(int expectedState, int newState) {
         if (STATE_UPDATER.compareAndSet(this, expectedState, newState)) {
-            buffer.put(offset + STATE_OFFSET, newState);
+            buffer.putInt(offset + STATE_OFFSET, newState);
             return true;
         }
         return false;
@@ -82,16 +82,16 @@ public class JSharedMemSegment {
     /**
      * 读取状态
      */
-    public byte getState() {
-        return buffer.get(offset);
+    public int getState() {
+        return buffer.getInt(offset);
     }
 
     /**
      * 设置状态
      */
-    public void setState(byte newState) {
+    public void setState(int newState) {
         this.state = newState;
-        buffer.put(offset, newState);
+        buffer.putInt(offset, newState);
     }
 
     /**

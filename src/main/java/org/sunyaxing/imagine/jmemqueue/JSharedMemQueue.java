@@ -51,7 +51,7 @@ public class JSharedMemQueue {
             // 当前SMG
             JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
             // 读取当前状态
-            byte state = segment.getState();
+            int state = segment.getState();
             // 如果可写（状态为0）
             if (state == JSharedMemSegment.STATE_IDLE) {
                 // 使用CAS将状态改为写占用
@@ -86,7 +86,7 @@ public class JSharedMemQueue {
         for (int attempts = 0; attempts < capacity * 2; attempts++) { // TODO 为什么是*2?
             int currentIndex = readIndex.getAndUpdate(old -> (old + JSharedMemSegment.SMG_SIZE) % (capacity * JSharedMemSegment.SMG_SIZE));
             JSharedMemSegment segment = new JSharedMemSegment(sharedMemory, currentIndex);
-            byte state = segment.getState();
+            int state = segment.getState();
             // 如果可读（状态为2）
             if (state == JSharedMemSegment.STATE_READABLE) {
                 // 使用CAS将状态改为读占用
