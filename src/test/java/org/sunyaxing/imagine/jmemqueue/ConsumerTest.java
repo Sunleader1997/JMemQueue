@@ -23,15 +23,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ConsumerTest {
 
-    private static final int QUEUE_CAPACITY = 2048; // 队列大小 1MB
+    private static final int QUEUE_CAPACITY = 204800; // 队列大小 1MB
     private static final int MESSAGE_COUNT = 204800; // 消息总数
     private static final int BUSINESS_THREAD_COUNT = 5; // 业务处理线程数
+    private static final String TOPIC = "topic1";
 
-    //持续生产消息
+    /**
+     * 模拟多线程生产消息
+     */
     @Test
     public void produce() throws Exception {
         // 创建共享内存队列
-        JSharedMemQueue queue = new JSharedMemQueue("aaa", QUEUE_CAPACITY, true);
+        JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY, true);
         // 先生产一批消息
         System.out.println("开始生产消息...");
         for (int i = 0; i < MESSAGE_COUNT; i++) {
@@ -49,7 +52,7 @@ public class ConsumerTest {
 
     @Test
     public void createConsumer() throws Exception {
-        JSharedMemQueue queue = new JSharedMemQueue("aaa", QUEUE_CAPACITY);
+        JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY);
         AtomicInteger consumedCount = new AtomicInteger(0);
         // 创建多线程执行 dequeue
         CountDownLatch consumerLatch = new CountDownLatch(MESSAGE_COUNT);
@@ -90,7 +93,7 @@ public class ConsumerTest {
     @Test
     public void createConsumerWithReactor() throws Exception {
         // 创建共享内存队列
-        JSharedMemQueue queue = new JSharedMemQueue("aaa", QUEUE_CAPACITY);
+        JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY);
         // 消费统计
         AtomicInteger consumedCount = new AtomicInteger(0);
         AtomicInteger nullCount = new AtomicInteger(0);
