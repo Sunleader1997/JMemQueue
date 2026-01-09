@@ -1,6 +1,9 @@
 package org.sunyaxing.imagine.jmemqueue;
 
+import java.io.File;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class JSharedMemQueue {
@@ -19,11 +22,17 @@ public class JSharedMemQueue {
     /**
      * 创建共享内存队列
      *
+     * @param fileName     MappedByteBuffer 映射地址
      * @param capacity 队列容量（SMG个数）
      */
-    public JSharedMemQueue(int capacity) {
+    public JSharedMemQueue(String fileName, int capacity) throws Exception {
+        File path = File.createTempFile(fileName, ".tmp");
+        RandomAccessFile file = new RandomAccessFile(path, "rw");
+        FileChannel channel = file.getChannel();
         this.capacity = capacity;
-        this.sharedMemory = ByteBuffer.allocateDirect(capacity * JSharedMemSegment.SMG_SIZE);
+        // 创建映射的字节缓冲区
+        this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, (long) capacity * JSharedMemSegment.SMG_SIZE);
+//        this.sharedMemory = ByteBuffer.allocateDirect(capacity * JSharedMemSegment.SMG_SIZE);
         this.readIndex = new AtomicInteger(0);
         this.writeIndex = new AtomicInteger(0);
     }
@@ -111,6 +120,7 @@ public class JSharedMemQueue {
         // 队列为空
         return null;
     }
+
     /**
      * 获取队列容量
      */
