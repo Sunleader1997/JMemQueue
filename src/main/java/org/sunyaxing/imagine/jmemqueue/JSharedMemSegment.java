@@ -52,7 +52,7 @@ public class JSharedMemSegment {
 
 
     private final ByteBuffer buffer; // 整个内存分区
-    private final int offset; // 当前SMG的起始偏移量
+    private final int byteIndex; // 当前SMG的起始偏移量
     /**
      * VarHandle用于对ByteBuffer进行CAS操作
      */
@@ -61,9 +61,9 @@ public class JSharedMemSegment {
             ByteOrder.nativeOrder()
     );
 
-    public JSharedMemSegment(ByteBuffer buffer, int offset) {
+    public JSharedMemSegment(ByteBuffer buffer, int index) {
         this.buffer = buffer;
-        this.offset = offset;
+        this.byteIndex = index * SMG_SIZE;
     }
 
     /**
@@ -78,7 +78,7 @@ public class JSharedMemSegment {
      * 可作用于不同进程下对同一个数值的cas操作
      */
     public boolean compareAndSetState(int expectedState, int newState) {
-        return INT_HANDLE.compareAndSet(buffer, offset + STATE_OFFSET, expectedState, newState);
+        return INT_HANDLE.compareAndSet(buffer, byteIndex + STATE_OFFSET, expectedState, newState);
     }
 
     public boolean isState(int state) {
@@ -89,28 +89,28 @@ public class JSharedMemSegment {
      * 读取状态
      */
     public int getState() {
-        return (int) INT_HANDLE.getVolatile(buffer, offset + STATE_OFFSET);
+        return (int) INT_HANDLE.getVolatile(buffer, byteIndex + STATE_OFFSET);
     }
 
     /**
      * 设置状态
      */
     public void setState(int newState) {
-        INT_HANDLE.setVolatile(buffer, offset + STATE_OFFSET, newState);
+        INT_HANDLE.setVolatile(buffer, byteIndex + STATE_OFFSET, newState);
     }
 
     /**
      * 读取数据大小
      */
     public int getSize() {
-        return buffer.getInt(offset + SIZE_OFFSET);
+        return buffer.getInt(byteIndex + SIZE_OFFSET);
     }
 
     /**
      * 设置数据大小
      */
     public void setSize(int size) {
-        buffer.putInt(offset + SIZE_OFFSET, size);
+        buffer.putInt(byteIndex + SIZE_OFFSET, size);
     }
 
     /**
@@ -123,7 +123,7 @@ public class JSharedMemSegment {
         }
         try {
             this.setSize(data.length);
-            buffer.put(offset + CONTENT_OFFSET, data);
+            buffer.put(byteIndex + CONTENT_OFFSET, data);
         } finally {
             this.setState(JSharedMemSegment.STATE_READABLE); // 不管写入是否执行成功，都将状态改为写完成 否则读线程的顺序读取会一直在等待数据可读
         }
@@ -132,19 +132,22 @@ public class JSharedMemSegment {
     /**
      * 读取数据内容
      */
-    public byte[] readContent(int size) {
-        if (size > MAX_CONTENT_SIZE) {
-            throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
+    public byte[] readContent() {
+        try {
+            byte[] data = new byte[getSize()];
+            buffer.get(byteIndex + CONTENT_OFFSET, data);
+            // 标记数据已读
+            setState(JSharedMemSegment.STATE_IDLE);
+            return data;
+        } finally {
+            setState(JSharedMemSegment.STATE_IDLE);
         }
-        byte[] data = new byte[size];
-        buffer.get(offset + CONTENT_OFFSET, data);
-        return data;
     }
 
     /**
      * 获取当前SMG的起始偏移量
      */
-    public int getOffset() {
-        return offset;
+    public int getByteIndex() {
+        return byteIndex;
     }
 }
