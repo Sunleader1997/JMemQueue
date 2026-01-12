@@ -75,9 +75,14 @@ public class JSharedMemSegment {
 
     /**
      * 使用CAS方式尝试将状态从expectedState改为newState
+     * 可作用于不同进程下对同一个数值的cas操作
      */
     public boolean compareAndSetState(int expectedState, int newState) {
         return INT_HANDLE.compareAndSet(buffer, offset + STATE_OFFSET, expectedState, newState);
+    }
+
+    public boolean isState(int state) {
+        return getState() == state;
     }
 
     /**
@@ -116,7 +121,12 @@ public class JSharedMemSegment {
         if (data.length > MAX_CONTENT_SIZE) {
             throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
         }
-        buffer.put(offset + CONTENT_OFFSET, data);
+        try {
+            this.setSize(data.length);
+            buffer.put(offset + CONTENT_OFFSET, data);
+        } finally {
+            this.setState(JSharedMemSegment.STATE_READABLE); // 不管写入是否执行成功，都将状态改为写完成 否则读线程的顺序读取会一直在等待数据可读
+        }
     }
 
     /**

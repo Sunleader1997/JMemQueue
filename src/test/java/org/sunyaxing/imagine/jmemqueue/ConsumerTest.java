@@ -25,7 +25,7 @@ public class ConsumerTest {
 
     private static final int QUEUE_CAPACITY = 2048; // 队列大小 1MB
     private static final int MESSAGE_COUNT = 204800; // 消息总数
-    private static final int BUSINESS_THREAD_COUNT = 1; // 业务处理线程数
+    private static final int BUSINESS_THREAD_COUNT = 5; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
     /**
