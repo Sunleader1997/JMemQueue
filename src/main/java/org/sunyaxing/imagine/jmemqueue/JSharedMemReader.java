@@ -79,7 +79,6 @@ public class JSharedMemReader {
         try {
             return this.readCarriage.getSegment(offset);
         } catch (CarriageIndexMatchException e) {
-            e.printStackTrace();
             this.readCarriage = new JSharedMemCarriage(this.jSharedMemBaseInfo, offset);
             return getSegment(offset);
         }
