@@ -3,7 +3,6 @@ package org.sunyaxing.imagine.jmemqueue;
 import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageIndexMatchException;
 import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageInitFailException;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.invoke.MethodHandles;
@@ -17,7 +16,6 @@ import java.nio.channels.FileChannel;
  * 需要记录读取位置
  */
 public class JSharedMemReader {
-    private static final String PARENT_DIR = System.getProperty("java.io.tmpdir") + File.separator + "JSMQ" + File.separator;
     private static final long BASE_SIZE = 1024 * 1024;
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private JSharedMemCarriage readCarriage;
@@ -50,7 +48,6 @@ public class JSharedMemReader {
     }
 
     public void commitOffset(long offset) {
-        // TODO 需要检查commit线程是否唯一
         LONG_HANDLE.set(readerSharedMemory, INDEX_READER_OFFSET, offset);
     }
 
@@ -75,7 +72,7 @@ public class JSharedMemReader {
         return getSegment(offset);
     }
 
-    private JSharedMemSegment getSegment(long offset) {
+    private synchronized JSharedMemSegment getSegment(long offset) {
         try {
             return this.readCarriage.getSegment(offset);
         } catch (CarriageIndexMatchException e) {
@@ -100,6 +97,6 @@ public class JSharedMemReader {
     }
 
     public String getReaderPath() {
-        return PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".reader";
+        return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".reader";
     }
 }

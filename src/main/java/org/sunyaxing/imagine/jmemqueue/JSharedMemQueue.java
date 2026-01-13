@@ -23,7 +23,7 @@ public class JSharedMemQueue {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity); // 基础信息
     }
 
-    public JSharedMemReader getReader() {
+    public JSharedMemReader createReader() {
         return new JSharedMemReader(this.jSharedMemBaseInfo);
     }
 

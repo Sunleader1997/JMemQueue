@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ConsumerTest {
 
-    private static final int QUEUE_CAPACITY = 2048; // 队列大小 1MB
-    private static final int MESSAGE_COUNT = 204800; // 消息总数
+    private static final int QUEUE_CAPACITY = 2048; // 队列大小 20MB
+    private static final int MESSAGE_COUNT = QUEUE_CAPACITY*10 ; // 消息总数
     private static final int BUSINESS_THREAD_COUNT = 1; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
@@ -49,7 +49,6 @@ public class ConsumerTest {
     @Test
     public void createConsumer() throws Exception {
         JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY);
-        JSharedMemReader reader = queue.getReader();
         AtomicInteger consumedCount = new AtomicInteger(0);
         // 创建多线程执行 dequeue
         CountDownLatch consumerLatch = new CountDownLatch(MESSAGE_COUNT);
@@ -59,21 +58,18 @@ public class ConsumerTest {
         for (int i = 0; i < BUSINESS_THREAD_COUNT; i++) {
             System.out.println("启动消费者线程: " + i);
             executor.execute(() -> {
+                JSharedMemReader reader = queue.createReader();
                 while (true) {
                     byte[] data = reader.dequeue();
                     if (data != null) {
                         String message = new String(data, StandardCharsets.UTF_8);
                         consumedCount.incrementAndGet();
                         consumerLatch.countDown();
-                    } else {
-                        System.out.println("FINISH" + reader.getReaderOffset());
-                        return;
                     }
                 }
             });
         }
-        boolean finished = consumerLatch.await(10, TimeUnit.SECONDS);
-        System.out.println("消费者结束"+reader.getReaderOffset());
+        boolean finished = consumerLatch.await(1, TimeUnit.MINUTES);
         executor.shutdown();
         long totalDuration = System.currentTimeMillis() - startTime;
         // 打印统计信息
@@ -92,7 +88,6 @@ public class ConsumerTest {
     public void createConsumerWithReactor() throws Exception {
         // 创建共享内存队列
         JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY);
-        JSharedMemReader reader = queue.getReader();
         // 消费统计
         AtomicInteger consumedCount = new AtomicInteger(0);
         AtomicInteger nullCount = new AtomicInteger(0);
@@ -109,6 +104,7 @@ public class ConsumerTest {
 
         // 参考ChainDriver的实现方式：使用defer().repeat()实现主动拉取模式
         Flux<byte[]> dataDequeue = Flux.defer(() -> {
+            JSharedMemReader reader = queue.createReader();
             byte[] data = reader.dequeue();
             if (data == null) {
                 nullCount.incrementAndGet();

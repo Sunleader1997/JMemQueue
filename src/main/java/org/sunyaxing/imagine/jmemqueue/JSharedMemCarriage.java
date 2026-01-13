@@ -3,7 +3,6 @@ package org.sunyaxing.imagine.jmemqueue;
 import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageIndexMatchException;
 import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageInitFailException;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -13,11 +12,6 @@ import java.nio.channels.FileChannel;
  * 车厢: 存储 SEGMENT 顺序集合
  */
 public class JSharedMemCarriage {
-    private static final String PARENT_DIR = System.getProperty("java.io.tmpdir") + File.separator + "JSMQ" + File.separator;
-
-    static {
-        new File(PARENT_DIR).mkdir();
-    }
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
@@ -49,13 +43,8 @@ public class JSharedMemCarriage {
         System.out.println("CARRIAGE " + carriagePath + " OFFSET : " + offset);
     }
 
-
-    public long getCapacity() {
-        return capacity;
-    }
-
     public String getCarriagePath(long carriageIndex) {
-        return PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
+        return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
     }
 
     public JSharedMemSegment createSegment() {

@@ -25,9 +25,7 @@ public class JSharedMemBaseInfo {
 
     public JSharedMemBaseInfo(String topic, int carriage) throws IOException {
         this.topic = topic;
-        String parentDir = System.getProperty("java.io.tmpdir") + File.separator + "JSMQ" + File.separator;
-        new File(parentDir).mkdir();
-        String path = parentDir + "ipc_" + topic + ".base";
+        String path = Dictionary.PARENT_DIR + "ipc_" + topic + ".base";
         File file = new File(path);
         RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
         this.channel = accessFile.getChannel();
