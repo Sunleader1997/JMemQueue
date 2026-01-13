@@ -136,8 +136,6 @@ public class JSharedMemSegment {
         try {
             byte[] data = new byte[getSize()];
             buffer.get(byteIndex + CONTENT_OFFSET, data);
-            // 标记数据已读
-            setState(JSharedMemSegment.STATE_IDLE);
             return data;
         } finally {
             setState(JSharedMemSegment.STATE_IDLE);

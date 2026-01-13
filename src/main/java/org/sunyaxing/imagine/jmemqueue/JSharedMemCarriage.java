@@ -47,16 +47,6 @@ public class JSharedMemCarriage {
         return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
     }
 
-    public JSharedMemSegment createSegment() {
-        long offset = jSharedMemBaseInfo.getTotalOffset();
-        long carriageIndex = offset / capacity;
-        if (carriageIndex != currentCarriageIndex) {
-            throw new CarriageIndexMatchException("当前车厢已经塞满");
-        }
-        int index = (int) (offset % capacity);
-        return new JSharedMemSegment(sharedMemory, index); // 当前SMG
-    }
-
     public JSharedMemSegment getSegment(long offset) {
         long carriageIndex = offset / capacity;
         if (carriageIndex != currentCarriageIndex) {

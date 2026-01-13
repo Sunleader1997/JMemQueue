@@ -51,11 +51,11 @@ public class JSharedMemBaseInfo {
         LONG_HANDLE.set(sharedBaseMemory, INDEX_CARRIAGE, carriage);
     }
 
-    public void increaseTotalOffset() {
+    public long getAndIncreaseTotalOffset() {
         while (true) {
             long cto = getTotalOffset();
             if (LONG_HANDLE.compareAndSet(sharedBaseMemory, INDEX_TOTAL_OFFSET, cto, cto + 1)) {
-                return;
+                return cto;
             }
         }
     }
