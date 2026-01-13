@@ -16,8 +16,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ConsumerTest {
 
-    private static final int CARRIAGE_CAPACITY = 2048; // 车厢大小
-    private static final int MESSAGE_COUNT = CARRIAGE_CAPACITY * 10; // 总数据量
+    private static final int CARRIAGE_CAPACITY = 204800; // 车厢大小
+    private static final int MESSAGE_COUNT = CARRIAGE_CAPACITY; // 总数据量
     private static final int BUSINESS_THREAD_COUNT = 4; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
@@ -25,7 +25,7 @@ public class ConsumerTest {
      * 模拟多线程生产消息
      */
     @Test
-    public void produce() throws Exception {
+    public void produce() {
         // 创建共享内存队列
         try (JSharedMemQueue queue = new JSharedMemQueue(TOPIC, CARRIAGE_CAPACITY, true)) {
             // 先生产一批消息
