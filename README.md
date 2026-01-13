@@ -3,7 +3,9 @@
 </div>
 
 # <div align="center"><strong>JMemQueue</strong></div>
+
 ### <div align="center">高性能共享内存队列系统</div>
+
 # JMemQueue - 高性能共享内存队列系统
 
 JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能进程间通信（IPC）解决方案，利用内存映射文件（MappedByteBuffer）实现低延迟、高吞吐量的数据传输。
@@ -23,49 +25,54 @@ JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能进程
 
 每个数据单元（SMG）占用 1024 字节，结构如下：
 
-| 偏移量 | 大小 | 描述 |
-|--------|------|------|
-| 0-3    | 4 字节 | 状态字段（STATE_IDLE=0, STATE_WRITING=1, STATE_READABLE=2, STATE_READING=3）|
-| 4-7    | 4 字节 | 数据大小（实际内容长度）|
-| 8-1023 | 1016 字节 | 实际数据内容 |
+| 偏移量    | 大小      | 描述                                                                     |
+|--------|---------|------------------------------------------------------------------------|
+| 0-3    | 4 字节    | 状态字段（STATE_IDLE=0, STATE_WRITING=1, STATE_READABLE=2, STATE_READING=3） |
+| 4-7    | 4 字节    | 数据大小（实际内容长度）                                                           |
+| 8-1023 | 1016 字节 | 实际数据内容                                                                 |
 
 ### 核心组件
 
 #### 1. JSharedMemQueue
+
 - 主队列接口，提供 `enqueue()` 和 `createReader()` 方法
 - 管理全局偏移量和车厢分配
 
 #### 2. JSharedMemBaseInfo
+
 - 维护队列的基础信息（总偏移量、车厢容量等）
 - 使用 `VarHandle` 提供原子操作支持
 
 #### 3. JSharedMemCarriage
+
 - 逻辑车厢，管理多个 SMG 段
 - 按需加载和卸载内存映射文件
 
 #### 4. JSharedMemSegment
+
 - 单个内存段，对应一个 SMG
 - 提供状态管理和数据读写功能
 
 #### 5. JSharedMemReader
+
 - 消费者端读取器
 - 支持多线程并发消费
 
 ## 🛠️ 快速开始
 
 ### 环境要求
+
 - Java 17 或更高版本
 - Maven 3.6+ (或使用 Maven Wrapper)
 
 ### 安装与构建
 
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd JMemQueue
-
-# 构建项目
-./mvnw clean package
+<dependency>
+    <groupId>io.github.sunleader1997</groupId>
+    <artifactId>JMemQueue</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
 
 ### 生产者示例
@@ -120,16 +127,19 @@ println("收到消息: "+message);
 ## 🔧 配置参数
 
 ### 队列参数
+
 - `topic`: 队列主题名称，用于区分不同的队列实例
 - `capacity`: 队列容量（SMG 数量），影响内存使用和性能
 - `overwrite`: 是否覆盖现有队列数据
 
 ### 系统参数
+
 - `Dictionary.PARENT_DIR`: 共享内存文件存储目录（默认 `/JSMQ/`）
 
 ## 📁 文件结构
 
 JMemQueue 在系统中创建以下文件：
+
 - `/JSMQ/ipc_{topic}.base` - 队列基础信息文件
 - `/JSMQ/ipc_{topic}.dat.{n}` - 数据车厢文件
 - `/JSMQ/ipc_{topic}.reader` - 读取器状态文件
