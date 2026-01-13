@@ -1,3 +1,9 @@
+<div align="center">
+  <img src="./ICON.png" width="200"/>
+</div>
+
+# <div align="center"><strong>JMemQueue</strong></div>
+### <div align="center">高性能共享内存队列系统</div>
 # JMemQueue - 高性能共享内存队列系统
 
 JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能进程间通信（IPC）解决方案，利用内存映射文件（MappedByteBuffer）实现低延迟、高吞吐量的数据传输。
