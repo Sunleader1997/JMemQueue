@@ -15,11 +15,11 @@ public class JSharedMemQueue {
      * @param topic    MappedByteBuffer 映射地址
      * @param capacity 队列容量（SMG个数）
      */
-    public JSharedMemQueue(String topic, int capacity) throws Exception {
+    public JSharedMemQueue(String topic, int capacity) {
         this(topic, capacity, false);
     }
 
-    public JSharedMemQueue(String topic, int capacity, boolean overwrite) throws IOException {
+    public JSharedMemQueue(String topic, int capacity, boolean overwrite){
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity); // 基础信息
     }
 

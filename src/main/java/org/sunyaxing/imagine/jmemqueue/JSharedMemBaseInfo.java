@@ -1,5 +1,7 @@
 package org.sunyaxing.imagine.jmemqueue;
 
+import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageInitFailException;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -23,13 +25,17 @@ public class JSharedMemBaseInfo {
     private static final int INDEX_TOTAL_OFFSET = 0;
     private static final int INDEX_CARRIAGE = 8;
 
-    public JSharedMemBaseInfo(String topic, int carriage) throws IOException {
+    public JSharedMemBaseInfo(String topic, int carriage) {
         this.topic = topic;
         String path = Dictionary.PARENT_DIR + "ipc_" + topic + ".base";
         File file = new File(path);
-        RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
-        this.channel = accessFile.getChannel();
-        this.sharedBaseMemory = this.channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
+        try {
+            RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
+            this.channel = accessFile.getChannel();
+            this.sharedBaseMemory = this.channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
+        } catch (IOException e) {
+            throw new CarriageInitFailException(e);
+        }
         this.setCarriage(carriage);
         System.out.println("TOPIC " + topic + " OFFSET : " + getTotalOffset());
     }
