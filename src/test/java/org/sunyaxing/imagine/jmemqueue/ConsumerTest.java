@@ -27,7 +27,6 @@ public class ConsumerTest {
     public void produce() throws Exception {
         // 创建共享内存队列
         JSharedMemQueue queue = new JSharedMemQueue(TOPIC, QUEUE_CAPACITY, true);
-        queue.createWriteCarriage();
         // 先生产一批消息
         System.out.println("开始生产消息...");
         for (int i = 0; i < MESSAGE_COUNT; i++) {

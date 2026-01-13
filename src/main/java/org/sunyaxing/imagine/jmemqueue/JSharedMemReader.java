@@ -1,6 +1,5 @@
 package org.sunyaxing.imagine.jmemqueue;
 
-import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageIndexMatchException;
 import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageInitFailException;
 
 import java.io.IOException;
@@ -18,7 +17,7 @@ import java.nio.channels.FileChannel;
 public class JSharedMemReader {
     private static final long BASE_SIZE = 1024 * 1024;
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
-    private JSharedMemCarriage readCarriage;
+    private final ThreadLocal<JSharedMemCarriage> threadLocalReadCarriage = new ThreadLocal<>();
     private final ByteBuffer readerSharedMemory;
 
     private final int INDEX_READER_OFFSET = 0;
@@ -32,14 +31,34 @@ public class JSharedMemReader {
 
     public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
-        this.readCarriage = new JSharedMemCarriage(this.jSharedMemBaseInfo, 0);
         String carriagePath = getReaderPath();
         try {
             RandomAccessFile accessFile = new RandomAccessFile(carriagePath, "rw");
             FileChannel channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
+            long readOffset = getReaderOffset();// 恢复读取位置
+            getReadCarriage(readOffset);
         } catch (IOException e) {
             throw new CarriageInitFailException();
+        }
+    }
+
+    public JSharedMemCarriage getReadCarriage(long offset) {
+        JSharedMemCarriage readCarriage = threadLocalReadCarriage.get();
+        if (readCarriage != null) {
+            long compare = readCarriage.compareTo(offset);
+            if (compare == 0) {
+                return readCarriage;
+            } else {
+                readCarriage.close();
+                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+                threadLocalReadCarriage.set(newReadCarriage);
+                return newReadCarriage;
+            }
+        } else {
+            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+            threadLocalReadCarriage.set(newReadCarriage);
+            return newReadCarriage;
         }
     }
 
@@ -69,18 +88,9 @@ public class JSharedMemReader {
     }
 
     public JSharedMemSegment getSegment() {
-        long offset = getAndIncreaseOffset();
+        long offset = getAndIncreaseOffset(); // cas 拉取到offset
         if (offset < 0) return null; // 如果消费队列已空，则返回null
-        return getSegment(offset);
-    }
-
-    private synchronized JSharedMemSegment getSegment(long offset) {
-        try {
-            return this.readCarriage.getSegment(offset);
-        } catch (CarriageIndexMatchException e) {
-            this.readCarriage = new JSharedMemCarriage(this.jSharedMemBaseInfo, offset);
-            return getSegment(offset);
-        }
+        return getReadCarriage(offset).getSegment(offset);
     }
 
     /**

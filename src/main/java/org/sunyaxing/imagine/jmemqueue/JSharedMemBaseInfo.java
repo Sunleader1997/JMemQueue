@@ -37,7 +37,6 @@ public class JSharedMemBaseInfo {
             throw new CarriageInitFailException(e);
         }
         this.setCarriage(carriage);
-        System.out.println("TOPIC " + topic + " OFFSET : " + getTotalOffset());
     }
 
     /**
@@ -45,6 +44,9 @@ public class JSharedMemBaseInfo {
      */
     private static final VarHandle LONG_HANDLE = MethodHandles.byteBufferViewVarHandle(long[].class, ByteOrder.nativeOrder());
 
+    /**
+     * 获取最新的偏移量
+     */
     public long getTotalOffset() {
         return (long) LONG_HANDLE.getVolatile(sharedBaseMemory, INDEX_TOTAL_OFFSET);
     }

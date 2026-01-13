@@ -1,13 +1,10 @@
 package org.sunyaxing.imagine.jmemqueue;
 
-import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageIndexMatchException;
-
-import java.io.IOException;
-
 public class JSharedMemQueue {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
-    private JSharedMemCarriage writeCarriage;
+    // 每个线程自己维护一个车厢，防止竞态
+    private final ThreadLocal<JSharedMemCarriage> threadLocalWriteCarriage = new ThreadLocal<>();
 
     /**
      * 创建共享内存队列
@@ -19,16 +16,12 @@ public class JSharedMemQueue {
         this(topic, capacity, false);
     }
 
-    public JSharedMemQueue(String topic, int capacity, boolean overwrite){
+    public JSharedMemQueue(String topic, int capacity, boolean overwrite) {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity); // 基础信息
     }
 
     public JSharedMemReader createReader() {
         return new JSharedMemReader(this.jSharedMemBaseInfo);
-    }
-
-    public synchronized void createWriteCarriage() {
-        this.writeCarriage = new JSharedMemCarriage(this.jSharedMemBaseInfo);
     }
 
     /**
@@ -48,11 +41,30 @@ public class JSharedMemQueue {
 
 
     public JSharedMemSegment createSegment(long offset) {
-        try {
-            return this.writeCarriage.getSegment(offset);
-        } catch (CarriageIndexMatchException e) { // 如果满了，则创建新的 TODO 如果jSharedMemCarriage有引用，需要等待引用线程结束
-            createWriteCarriage();
-            return createSegment(offset);
+        JSharedMemCarriage writeCarriage = getCarriageForLocal(offset);
+        return writeCarriage.getSegment(offset);
+    }
+
+    /**
+     * 此方法能保证拿到正确的车厢
+     */
+    public JSharedMemCarriage getCarriageForLocal(long offset) {
+        JSharedMemCarriage writeCarriage = threadLocalWriteCarriage.get();
+        if (writeCarriage != null) {
+            long compare = writeCarriage.compareTo(offset);
+            if (compare == 0) {
+                return writeCarriage;
+            } else {
+                writeCarriage.close(); // 旧的车厢应该销毁
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+                threadLocalWriteCarriage.set(newWriteCarriage);
+                if (compare > 0) System.out.println("!!! 方法调用有严重问题");
+                return newWriteCarriage;
+            }
+        } else {
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+            threadLocalWriteCarriage.set(newWriteCarriage);
+            return newWriteCarriage;
         }
     }
 

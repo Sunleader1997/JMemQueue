@@ -11,7 +11,7 @@ import java.nio.channels.FileChannel;
 /**
  * 车厢: 存储 SEGMENT 顺序集合
  */
-public class JSharedMemCarriage {
+public class JSharedMemCarriage implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
@@ -40,7 +40,7 @@ public class JSharedMemCarriage {
         } catch (IOException e) {
             throw new CarriageInitFailException();
         }
-        System.out.println("CARRIAGE " + carriagePath + " OFFSET : " + offset);
+        System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
     }
 
     public String getCarriagePath(long carriageIndex) {
@@ -48,11 +48,32 @@ public class JSharedMemCarriage {
     }
 
     public JSharedMemSegment getSegment(long offset) {
-        long carriageIndex = offset / capacity;
-        if (carriageIndex != currentCarriageIndex) {
-            throw new CarriageIndexMatchException("当前offset(" + offset + ")对应的车厢索引和当前车厢索引(" + currentCarriageIndex + ")不匹配");
+        int compare = compareTo(offset);
+        if (compare == 0) { // 直接取出数据块
+            int index = (int) (offset % capacity);
+            return new JSharedMemSegment(sharedMemory, index);
+        } else {
+            throw new CarriageIndexMatchException("【车厢】当前车厢已过时" + currentCarriageIndex);
         }
-        int index = (int) (offset % capacity);
-        return new JSharedMemSegment(sharedMemory, index);
+    }
+
+    public long getCarriageIndex() {
+        return currentCarriageIndex;
+    }
+
+    /**
+     * 判断offset是否匹配当前车厢
+     *
+     * @param offset 提供的offset
+     * @return -1 当前车厢已经旧了，需要创建新的 0 匹配 1 提供的offset落后了
+     */
+    public int compareTo(long offset) {
+        long carriageIndex = offset / capacity;
+        return Long.compare(currentCarriageIndex, carriageIndex);
+    }
+
+    @Override
+    public void close() {
+
     }
 }
