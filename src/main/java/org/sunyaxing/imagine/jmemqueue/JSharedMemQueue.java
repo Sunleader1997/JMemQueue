@@ -1,10 +1,11 @@
 package org.sunyaxing.imagine.jmemqueue;
 
-public class JSharedMemQueue {
+public class JSharedMemQueue implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     // 每个线程自己维护一个车厢，防止竞态
     private final ThreadLocal<JSharedMemCarriage> threadLocalWriteCarriage = new ThreadLocal<>();
+
 
     /**
      * 创建共享内存队列
@@ -17,7 +18,7 @@ public class JSharedMemQueue {
     }
 
     public JSharedMemQueue(String topic, int capacity, boolean overwrite) {
-        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity); // 基础信息
+        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity, overwrite); // 基础信息
     }
 
     public JSharedMemReader createReader() {
@@ -28,15 +29,11 @@ public class JSharedMemQueue {
      * 向车厢塞入数据
      */
     public boolean enqueue(byte[] data) {
-        while (true) {
-            long offset = this.jSharedMemBaseInfo.getAndIncreaseTotalOffset();
-            JSharedMemSegment segment = createSegment(offset); // 当前SMG
-            // 如果当前位置空闲，将内存改为写占用
-            if (segment.compareAndSetState(JSharedMemSegment.STATE_IDLE, JSharedMemSegment.STATE_WRITING)) {
-                segment.writeContent(data);
-                return true;
-            }// 如果修改失败说明当前位置已经被占用，需要重新获取 segment
-        }
+        // 这里使用 cas 已经保证 offset 唯一性了，所以可以直接覆盖
+        long offset = this.jSharedMemBaseInfo.getAndIncreaseTotalOffset();
+        JSharedMemSegment segment = createSegment(offset); // 当前SMG
+        segment.writeContent(data);
+        return true;
     }
 
 
@@ -71,5 +68,19 @@ public class JSharedMemQueue {
 
     public long getTotalOffset() {
         return this.jSharedMemBaseInfo.getTotalOffset();
+    }
+
+    @Override
+    public void close() {
+        try {
+            System.out.println("【QUEUE】 执行销毁");
+            this.jSharedMemBaseInfo.close();
+            JSharedMemCarriage writeCarriage = threadLocalWriteCarriage.get();
+            if (writeCarriage != null) {
+                writeCarriage.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

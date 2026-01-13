@@ -14,6 +14,8 @@ import java.nio.channels.FileChannel;
 public class JSharedMemCarriage implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
+    private final RandomAccessFile accessFile;
+    private final FileChannel channel;
     private final ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
     // 当前车厢索引
     private final long currentCarriageIndex;
@@ -34,8 +36,8 @@ public class JSharedMemCarriage implements AutoCloseable {
         this.currentCarriageIndex = offset / capacity;
         String carriagePath = getCarriagePath(this.currentCarriageIndex);
         try {
-            RandomAccessFile accessFile = new RandomAccessFile(carriagePath, "rw");
-            FileChannel channel = accessFile.getChannel();
+            this.accessFile = new RandomAccessFile(carriagePath, "rw");
+            this.channel = accessFile.getChannel();
             this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, capacity * JSharedMemSegment.SMG_SIZE);
         } catch (IOException e) {
             throw new CarriageInitFailException();
@@ -74,6 +76,12 @@ public class JSharedMemCarriage implements AutoCloseable {
 
     @Override
     public void close() {
-
+        try {
+            System.out.println("【Carriage】 执行销毁");
+            this.accessFile.close();
+            this.channel.close();
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

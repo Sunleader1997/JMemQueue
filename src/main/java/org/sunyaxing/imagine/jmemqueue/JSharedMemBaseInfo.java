@@ -7,30 +7,35 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
  * 队列基础信息
  * 0. 队列总偏移量
+ * 1. 车厢容量
  */
-public class JSharedMemBaseInfo {
+public class JSharedMemBaseInfo implements AutoCloseable {
     private static final long BASE_SIZE = 1024 * 1024;
 
     private final String topic;
-    private final ByteBuffer sharedBaseMemory;// 存储队列基础信息
+    private final MappedByteBuffer sharedBaseMemory;// 存储队列基础信息
     private final FileChannel channel;
+    private final RandomAccessFile accessFile;
     // 偏移量的索引开始位置 long 数据，占8位
     private static final int INDEX_TOTAL_OFFSET = 0;
     private static final int INDEX_CARRIAGE = 8;
 
-    public JSharedMemBaseInfo(String topic, int carriage) {
+    public JSharedMemBaseInfo(String topic, int carriage, boolean overwrite) {
         this.topic = topic;
         String path = Dictionary.PARENT_DIR + "ipc_" + topic + ".base";
         File file = new File(path);
+        if (overwrite && file.exists()) {
+            file.delete();
+        }
         try {
-            RandomAccessFile accessFile = new RandomAccessFile(file, "rw");
+            this.accessFile = new RandomAccessFile(file, "rw");
             this.channel = accessFile.getChannel();
             this.sharedBaseMemory = this.channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
         } catch (IOException e) {
@@ -70,5 +75,16 @@ public class JSharedMemBaseInfo {
 
     public String getTopic() {
         return topic;
+    }
+
+    @Override
+    public void close() {
+        try {
+            System.out.println("【BaseInfo】 执行销毁");
+            this.accessFile.close();
+            this.channel.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

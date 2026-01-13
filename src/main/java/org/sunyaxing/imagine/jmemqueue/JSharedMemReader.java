@@ -14,10 +14,12 @@ import java.nio.channels.FileChannel;
  * 读取器
  * 需要记录读取位置
  */
-public class JSharedMemReader {
+public class JSharedMemReader implements AutoCloseable{
     private static final long BASE_SIZE = 1024 * 1024;
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ThreadLocal<JSharedMemCarriage> threadLocalReadCarriage = new ThreadLocal<>();
+    private final RandomAccessFile accessFile;
+    private final FileChannel channel;
     private final ByteBuffer readerSharedMemory;
 
     private final int INDEX_READER_OFFSET = 0;
@@ -33,8 +35,8 @@ public class JSharedMemReader {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         String carriagePath = getReaderPath();
         try {
-            RandomAccessFile accessFile = new RandomAccessFile(carriagePath, "rw");
-            FileChannel channel = accessFile.getChannel();
+            this.accessFile = new RandomAccessFile(carriagePath, "rw");
+            this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
             long readOffset = getReaderOffset();// 恢复读取位置
             getReadCarriage(readOffset);
@@ -113,5 +115,16 @@ public class JSharedMemReader {
 
     public String getReaderPath() {
         return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".reader";
+    }
+
+    @Override
+    public void close() {
+        try{
+            System.out.println("【Reader】 执行销毁");
+            this.accessFile.close();
+            this.channel.close();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 }
