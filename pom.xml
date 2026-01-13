@@ -8,17 +8,27 @@
     <name>JMemQueue</name>
     <description>JMemQueue</description>
     <url/>
+    <!-- 许可证信息 -->
     <licenses>
-        <license/>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
     </licenses>
+    <!-- 开发者信息 -->
     <developers>
-        <developer/>
+        <developer>
+            <name>sunyaxing</name>
+            <email>sunyaxing_1997@163.com</email>
+            <organization>sunyaxing</organization>
+            <organizationUrl>https://github.com/Sunleader1997</organizationUrl>
+        </developer>
     </developers>
+    <!-- SCM 信息 -->
     <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
+        <connection>scm:git:git://github.com/Sunleader1997/JMemQueue.git</connection>
+        <developerConnection>scm:git:ssh://github.com:Sunleader1997/JMemQueue.git</developerConnection>
+        <url>https://github.com/Sunleader1997/JMemQueue/tree/master</url>
     </scm>
     <properties>
         <java.version>17</java.version>
@@ -38,12 +48,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
