@@ -54,6 +54,8 @@ public class JSharedMemReader {
     /**
      * 使用 CAS方式尝试将状态从 expectedState 改为 newState
      * 可作用于不同进程下对同一个数值的cas操作
+     *
+     * @return -1 表示队列已空
      */
     public long getAndIncreaseOffset() {
         while (true) {
@@ -68,7 +70,7 @@ public class JSharedMemReader {
 
     public JSharedMemSegment getSegment() {
         long offset = getAndIncreaseOffset();
-        if (offset < 0) return null;
+        if (offset < 0) return null; // 如果消费队列已空，则返回null
         return getSegment(offset);
     }
 
@@ -90,7 +92,10 @@ public class JSharedMemReader {
     public byte[] dequeue() {
         while (true) {
             JSharedMemSegment segment = getSegment();
-            if (segment != null && segment.compareAndSetState(JSharedMemSegment.STATE_READABLE, JSharedMemSegment.STATE_READING)) {
+            if (segment == null) { // 如果队列已空，则返回null
+                return null;
+            } // 如果有数据，则尝试修改状态为正在读取
+            if (segment.compareAndSetState(JSharedMemSegment.STATE_READABLE, JSharedMemSegment.STATE_READING)) {
                 return segment.readContent();
             }//如果没有修改成功，说明被其他线程占用了
         }
