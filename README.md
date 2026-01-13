@@ -4,11 +4,11 @@
 
 # <div align="center"><strong>JMemQueue</strong></div>
 
-### <div align="center">高性能共享内存队列系统</div>
+### <div align="center">高性能跨进程共享内存队列系统</div>
 
-# JMemQueue - 高性能共享内存队列系统
+# JMemQueue - 高性能跨进程共享内存队列系统
 
-JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能进程间通信（IPC）解决方案，利用内存映射文件（MappedByteBuffer）实现低延迟、高吞吐量的数据传输。
+JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进程通信（IPC）解决方案，利用内存映射文件（MappedByteBuffer）实现低延迟、高吞吐量的数据传输。
 
 ## 🚀 特性
 
@@ -109,9 +109,7 @@ JSharedMemReader reader = queue.createReader();
 byte[] data = reader.dequeue();
 if(data !=null){
 String message = new String(data, StandardCharsets.UTF_8);
-    System.out.
-
-println("收到消息: "+message);
+System.out.println("收到消息: "+message);
 }
 ```
 
@@ -150,10 +148,10 @@ JMemQueue 在系统中创建以下文件：
 
 ```bash
 # 运行测试
-./mvnw test
+./mvn test
 
 # 运行特定测试
-./mvnw test -Dtest=ConsumerTest
+./mvn test -Dtest=ConsumerTest
 ```
 
 ## 🔒 线程安全
