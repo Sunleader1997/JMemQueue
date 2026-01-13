@@ -1,6 +1,6 @@
-package org.sunyaxing.imagine.jmemqueue;
+package io.github.sunleader1997.jmemqueue;
 
-import org.sunyaxing.imagine.jmemqueue.exceptions.CarriageInitFailException;
+import io.github.sunleader1997.jmemqueue.exceptions.CarriageInitFailException;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package org.sunyaxing.imagine.jmemqueue;
+package io.github.sunleader1997.jmemqueue;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;

@@ -1,4 +1,4 @@
-package org.sunyaxing.imagine.jmemqueue.exceptions;
+package io.github.sunleader1997.jmemqueue.exceptions;
 
 public class CarriageInitFailException extends RuntimeException {
     /** Constructs a new runtime exception with {@code null} as its

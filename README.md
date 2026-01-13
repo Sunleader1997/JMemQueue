@@ -71,7 +71,7 @@ cd JMemQueue
 ### 生产者示例
 
 ```java
-import org.sunyaxing.imagine.jmemqueue.JSharedMemQueue;
+import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
 
 // 创建共享内存队列
 JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
@@ -81,14 +81,16 @@ String message = "Hello, Shared Memory Queue!";
 byte[] data = message.getBytes(StandardCharsets.UTF_8);
 boolean success = queue.enqueue(data);
 
-System.out.println("消息入队: " + success);
+System.out.
+
+println("消息入队: "+success);
 ```
 
 ### 消费者示例
 
 ```java
-import org.sunyaxing.imagine.jmemqueue.JSharedMemQueue;
-import org.sunyaxing.imagine.jmemqueue.JSharedMemReader;
+import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
+import io.github.sunleader1997.jmemqueue.JSharedMemReader;
 
 // 创建队列实例
 JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
@@ -98,9 +100,11 @@ JSharedMemReader reader = queue.createReader();
 
 // 消费消息
 byte[] data = reader.dequeue();
-if (data != null) {
-    String message = new String(data, StandardCharsets.UTF_8);
-    System.out.println("收到消息: " + message);
+if(data !=null){
+String message = new String(data, StandardCharsets.UTF_8);
+    System.out.
+
+println("收到消息: "+message);
 }
 ```
 
