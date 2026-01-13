@@ -14,7 +14,7 @@ import java.nio.channels.FileChannel;
  * 读取器
  * 需要记录读取位置
  */
-public class JSharedMemReader implements AutoCloseable{
+public class JSharedMemReader implements AutoCloseable {
     private static final long BASE_SIZE = 1024 * 1024;
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ThreadLocal<JSharedMemCarriage> threadLocalReadCarriage = new ThreadLocal<>();
@@ -31,15 +31,16 @@ public class JSharedMemReader implements AutoCloseable{
             ByteOrder.nativeOrder()
     );
 
-    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo) {
+    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, boolean fromBegin) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         String carriagePath = getReaderPath();
         try {
             this.accessFile = new RandomAccessFile(carriagePath, "rw");
             this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
-            long readOffset = getReaderOffset();// 恢复读取位置
-            getReadCarriage(readOffset);
+            if (fromBegin) {
+                this.commitOffset(0);
+            }
         } catch (IOException e) {
             throw new CarriageInitFailException();
         }
@@ -102,15 +103,12 @@ public class JSharedMemReader implements AutoCloseable{
      * @return 读取到的数据，如果队列为空或超时返回null
      */
     public byte[] dequeue() {
-        while (true) {
-            JSharedMemSegment segment = getSegment();
-            if (segment == null) { // 如果队列已空，则返回null
-                return null;
-            } // 如果有数据，则尝试修改状态为正在读取
-            if (segment.compareAndSetState(JSharedMemSegment.STATE_READABLE, JSharedMemSegment.STATE_READING)) {
-                return segment.readContent();
-            }//如果没有修改成功，说明被其他线程占用了
-        }
+        // getSegment 做 offset increase 时已经保证了 offset 的唯一性
+        JSharedMemSegment segment = getSegment();
+        if (segment == null) { // 如果队列已空，则返回null
+            return null;
+        } // 如果有数据，则尝试修改状态为正在读取
+        return segment.readContent();
     }
 
     public String getReaderPath() {
@@ -119,11 +117,11 @@ public class JSharedMemReader implements AutoCloseable{
 
     @Override
     public void close() {
-        try{
+        try {
             System.out.println("【Reader】 执行销毁");
             this.accessFile.close();
             this.channel.close();
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

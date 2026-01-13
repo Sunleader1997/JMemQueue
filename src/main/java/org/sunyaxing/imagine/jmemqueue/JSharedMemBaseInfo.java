@@ -31,9 +31,6 @@ public class JSharedMemBaseInfo implements AutoCloseable {
         this.topic = topic;
         String path = Dictionary.PARENT_DIR + "ipc_" + topic + ".base";
         File file = new File(path);
-        if (overwrite && file.exists()) {
-            file.delete();
-        }
         try {
             this.accessFile = new RandomAccessFile(file, "rw");
             this.channel = accessFile.getChannel();
@@ -42,6 +39,9 @@ public class JSharedMemBaseInfo implements AutoCloseable {
             throw new CarriageInitFailException(e);
         }
         this.setCarriage(carriage);
+        if (overwrite) {
+            this.setTotalOffset(0L);
+        }
     }
 
     /**
@@ -54,6 +54,10 @@ public class JSharedMemBaseInfo implements AutoCloseable {
      */
     public long getTotalOffset() {
         return (long) LONG_HANDLE.getVolatile(sharedBaseMemory, INDEX_TOTAL_OFFSET);
+    }
+
+    private void setTotalOffset(long offset) {
+        LONG_HANDLE.set(sharedBaseMemory, INDEX_TOTAL_OFFSET, offset);
     }
 
     public long getCarriage() {

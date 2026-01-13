@@ -21,8 +21,8 @@ public class JSharedMemQueue implements AutoCloseable {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity, overwrite); // 基础信息
     }
 
-    public JSharedMemReader createReader() {
-        return new JSharedMemReader(this.jSharedMemBaseInfo);
+    public JSharedMemReader createReader(boolean fromBegin) {
+        return new JSharedMemReader(this.jSharedMemBaseInfo, fromBegin);
     }
 
     /**
