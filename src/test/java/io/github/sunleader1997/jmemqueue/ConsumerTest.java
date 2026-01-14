@@ -51,7 +51,7 @@ public class ConsumerTest {
             System.out.println("启动消费者线程: " + i);
             executor.execute(() -> {
                 // 创建同一个GROUP的消费者
-                try (JSharedMemReader reader = queue.createReader("group1")) {
+                try (JSharedMemReader reader = queue.createReader()) {
                     while (!Thread.interrupted()) {
                         byte[] data = reader.dequeue();
                         if (data != null) {
