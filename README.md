@@ -77,7 +77,7 @@ JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进
 <dependency>
     <groupId>io.github.sunleader1997</groupId>
     <artifactId>JMemQueue</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
