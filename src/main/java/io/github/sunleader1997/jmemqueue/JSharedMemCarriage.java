@@ -26,19 +26,19 @@ public class JSharedMemCarriage implements AutoCloseable {
      * @param jSharedMemBaseInfo 基础信息
      */
     public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo) {
-        this(jSharedMemBaseInfo, jSharedMemBaseInfo.getTotalOffset());
+        this(jSharedMemBaseInfo, jSharedMemBaseInfo.getTotalOffset(), FileChannel.MapMode.READ_WRITE);
     }
 
-    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset) {
+    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, FileChannel.MapMode mode) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         this.capacity = jSharedMemBaseInfo.getCarriage();
         // 链接当前共享内存
         this.currentCarriageIndex = offset / capacity;
         String carriagePath = getCarriagePath(this.currentCarriageIndex);
         try {
-            this.accessFile = new RandomAccessFile(carriagePath, "rw");
+            this.accessFile = new RandomAccessFile(carriagePath, FileChannel.MapMode.READ_WRITE.equals(mode) ? "rw" : "r");
             this.channel = accessFile.getChannel();
-            this.sharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, capacity * JSharedMemSegment.SMG_SIZE);
+            this.sharedMemory = channel.map(mode, 0, capacity * JSharedMemSegment.SMG_SIZE);
         } catch (IOException e) {
             throw new CarriageInitFailException();
         }
@@ -80,7 +80,7 @@ public class JSharedMemCarriage implements AutoCloseable {
             System.out.println("【Carriage】 执行销毁");
             this.accessFile.close();
             this.channel.close();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

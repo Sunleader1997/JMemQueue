@@ -1,5 +1,6 @@
 package io.github.sunleader1997.jmemqueue;
 
+import java.nio.channels.FileChannel;
 import java.util.UUID;
 
 public class JSharedMemQueue implements AutoCloseable {
@@ -70,13 +71,13 @@ public class JSharedMemQueue implements AutoCloseable {
                 return writeCarriage;
             } else {
                 writeCarriage.close(); // 旧的车厢应该销毁
-                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_WRITE);
                 threadLocalWriteCarriage.set(newWriteCarriage);
                 if (compare > 0) System.out.println("!!! 方法调用有严重问题");
                 return newWriteCarriage;
             }
         } else {
-            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset);
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_WRITE);
             threadLocalWriteCarriage.set(newWriteCarriage);
             return newWriteCarriage;
         }
