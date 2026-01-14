@@ -29,7 +29,7 @@ public class JSharedMemBaseInfo implements AutoCloseable {
 
     public JSharedMemBaseInfo(String topic, int carriage, boolean overwrite) {
         this.topic = topic;
-        String path = Dictionary.PARENT_DIR + "ipc_" + topic + ".base";
+        String path = Dictionary.PARENT_DIR + topic + ".base";
         File file = new File(path);
         try {
             this.accessFile = new RandomAccessFile(file, "rw");

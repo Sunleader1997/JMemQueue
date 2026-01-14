@@ -46,7 +46,7 @@ public class JSharedMemCarriage implements AutoCloseable {
     }
 
     public String getCarriagePath(long carriageIndex) {
-        return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
+        return Dictionary.PARENT_DIR + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
     }
 
     public JSharedMemSegment getSegment(long offset) {
