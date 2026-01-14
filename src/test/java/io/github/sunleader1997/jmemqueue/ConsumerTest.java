@@ -18,7 +18,7 @@ public class ConsumerTest {
 
     private static final int CARRIAGE_CAPACITY = 1024 * 1000; // 车厢大小
     private static final int MESSAGE_COUNT = CARRIAGE_CAPACITY; // 总数据量
-    private static final int BUSINESS_THREAD_COUNT = 1; // 业务处理线程数
+    private static final int BUSINESS_THREAD_COUNT = 4; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
     /**
