@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ConsumerTest {
 
-    private static final int CARRIAGE_CAPACITY = 1024 * 1024; // 车厢大小
+    private static final int CARRIAGE_CAPACITY = 1024 * 1000; // 车厢大小
     private static final int MESSAGE_COUNT = CARRIAGE_CAPACITY; // 总数据量
-    private static final int BUSINESS_THREAD_COUNT = 4; // 业务处理线程数
+    private static final int BUSINESS_THREAD_COUNT = 1; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
     /**
@@ -50,7 +50,8 @@ public class ConsumerTest {
         for (int i = 0; i < BUSINESS_THREAD_COUNT; i++) {
             System.out.println("启动消费者线程: " + i);
             executor.execute(() -> {
-                try (JSharedMemReader reader = queue.createReader(true);) {
+                // 创建同一个GROUP的消费者
+                try (JSharedMemReader reader = queue.createReader("group1")) {
                     while (!Thread.interrupted()) {
                         byte[] data = reader.dequeue();
                         if (data != null) {

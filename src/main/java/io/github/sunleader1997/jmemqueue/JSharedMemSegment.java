@@ -121,25 +121,17 @@ public class JSharedMemSegment {
         if (data.length > MAX_CONTENT_SIZE) {
             throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
         }
-        try {
-            this.setSize(data.length);
-            buffer.put(byteIndex + CONTENT_OFFSET, data);
-        } finally {
-            this.setState(JSharedMemSegment.STATE_READABLE); // 不管写入是否执行成功，都将状态改为写完成 否则读线程的顺序读取会一直在等待数据可读
-        }
+        this.setSize(data.length);
+        buffer.put(byteIndex + CONTENT_OFFSET, data);
     }
 
     /**
      * 读取数据内容
      */
     public byte[] readContent() {
-        try {
-            byte[] data = new byte[getSize()];
-            buffer.get(byteIndex + CONTENT_OFFSET, data);
-            return data;
-        } finally {
-            setState(JSharedMemSegment.STATE_IDLE);
-        }
+        byte[] data = new byte[getSize()];
+        buffer.get(byteIndex + CONTENT_OFFSET, data);
+        return data;
     }
 
     /**

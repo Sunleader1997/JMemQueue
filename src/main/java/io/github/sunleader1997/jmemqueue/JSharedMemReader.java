@@ -21,6 +21,7 @@ public class JSharedMemReader implements AutoCloseable {
     private final RandomAccessFile accessFile;
     private final FileChannel channel;
     private final ByteBuffer readerSharedMemory;
+    private final String group;
 
     private final int INDEX_READER_OFFSET = 0;
     /**
@@ -31,16 +32,18 @@ public class JSharedMemReader implements AutoCloseable {
             ByteOrder.nativeOrder()
     );
 
-    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, boolean fromBegin) {
+    /**
+     * @param jSharedMemBaseInfo
+     * @param group              group 负责负载均衡 同kafka的group
+     */
+    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, String group) {
+        this.group = group;
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         String carriagePath = getReaderPath();
         try {
             this.accessFile = new RandomAccessFile(carriagePath, "rw");
             this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
-            if (fromBegin) {
-                this.commitOffset(0);
-            }
         } catch (IOException e) {
             throw new CarriageInitFailException();
         }
@@ -69,6 +72,11 @@ public class JSharedMemReader implements AutoCloseable {
         return (long) LONG_HANDLE.getVolatile(readerSharedMemory, INDEX_READER_OFFSET);
     }
 
+    /**
+     * 重置offset到指定位置
+     *
+     * @param offset
+     */
     public void commitOffset(long offset) {
         LONG_HANDLE.set(readerSharedMemory, INDEX_READER_OFFSET, offset);
     }
@@ -112,7 +120,7 @@ public class JSharedMemReader implements AutoCloseable {
     }
 
     public String getReaderPath() {
-        return Dictionary.PARENT_DIR + "ipc_" + jSharedMemBaseInfo.getTopic() + ".reader";
+        return Dictionary.PARENT_DIR + jSharedMemBaseInfo.getTopic() + "_" + group + ".reader";
     }
 
     @Override

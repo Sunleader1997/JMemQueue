@@ -109,15 +109,16 @@ JSharedMemReader reader = queue.createReader();
 byte[] data = reader.dequeue();
 if(data !=null){
 String message = new String(data, StandardCharsets.UTF_8);
-System.out.println("收到消息: "+message);
-}
+System.out.
+
+println("收到消息: "+message);
 ```
 
 ## ⚡ 性能基准
 
 在典型硬件环境下（Intel i7, 16GB RAM），JMemQueue 达到以下性能指标：
 
-- **吞吐量**: 200万+ 条消息/秒
+- **吞吐量**: 单线程 200万+ 条消息/秒， 4线程 600万+ 条消息/秒
 - **延迟**: 平均 < 1 微秒
 - **内存使用**: 每个 SMG 固定 1KB，支持动态扩展
 - **并发**: 支持数百个生产者和消费者线程

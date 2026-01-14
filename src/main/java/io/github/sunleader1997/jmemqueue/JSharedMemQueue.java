@@ -1,5 +1,7 @@
 package io.github.sunleader1997.jmemqueue;
 
+import java.util.UUID;
+
 public class JSharedMemQueue implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
@@ -21,8 +23,23 @@ public class JSharedMemQueue implements AutoCloseable {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity, overwrite); // 基础信息
     }
 
-    public JSharedMemReader createReader(boolean fromBegin) {
-        return new JSharedMemReader(this.jSharedMemBaseInfo, fromBegin);
+    /**
+     * 创建一个读取器
+     * 随机一个group，数据将从0开始消费
+     *
+     * @return 消费者
+     */
+    public JSharedMemReader createReader() {
+        return createReader(UUID.randomUUID().toString());
+    }
+
+    /**
+     * 创建一个读取器
+     *
+     * @param group 指定 group 名称，同 kafka 的 group，消息将在 group 内负载均衡
+     */
+    public JSharedMemReader createReader(String group) {
+        return new JSharedMemReader(this.jSharedMemBaseInfo, group);
     }
 
     /**
