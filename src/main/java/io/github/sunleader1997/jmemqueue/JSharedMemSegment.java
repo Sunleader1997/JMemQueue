@@ -123,6 +123,7 @@ public class JSharedMemSegment {
         }
         this.setSize(data.length);
         buffer.put(byteIndex + CONTENT_OFFSET, data);
+        setState(STATE_READABLE);// 标记当前为可读状态
     }
 
     /**
@@ -132,6 +133,10 @@ public class JSharedMemSegment {
         byte[] data = new byte[getSize()];
         buffer.get(byteIndex + CONTENT_OFFSET, data);
         return data;
+    }
+
+    public boolean isReadable(){
+        return isState(JSharedMemSegment.STATE_READABLE);
     }
 
     /**

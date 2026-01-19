@@ -100,8 +100,12 @@ public class JSharedMemReader implements AutoCloseable {
 
     public JSharedMemSegment getSegment() {
         long offset = getAndIncreaseOffset(); // cas 拉取到offset
-        if (offset < 0) return null; // 如果消费队列已空，则返回null
-        return getReadCarriage(offset).getSegment(offset);
+        if (offset < 0) return null; // 如果消费队列已空，则返回 null
+        JSharedMemSegment segment = getReadCarriage(offset).getSegment(offset);
+        if (!segment.isReadable()){ // 如果状态不是可读，则返回 null
+            return null;
+        }
+        return segment;
     }
 
     /**
