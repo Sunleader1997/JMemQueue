@@ -53,12 +53,13 @@ public class JSharedMemReader implements AutoCloseable {
     }
 
     public JSharedMemCarriage getReadCarriage(long offset) {
-        JSharedMemCarriage readCarriage = threadLocalReadCarriage.get();
+        JSharedMemCarriage readCarriage = getCurrentCarriage();
         if (readCarriage != null) {
             long compare = readCarriage.compareTo(offset);
             if (compare == 0) {
                 return readCarriage;
             } else {
+                threadLocalReadCarriage.remove();
                 readCarriage.close();
                 JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
                 // 如果映射失败，说明文件丢失
@@ -78,6 +79,9 @@ public class JSharedMemReader implements AutoCloseable {
         return (long) LONG_HANDLE.getVolatile(readerSharedMemory, INDEX_READER_OFFSET);
     }
 
+    public JSharedMemCarriage getCurrentCarriage(){
+        return threadLocalReadCarriage.get();
+    }
     /**
      * 重置offset到指定位置
      *
@@ -142,6 +146,7 @@ public class JSharedMemReader implements AutoCloseable {
     public void close() {
         try {
             System.out.println("【Reader】 执行销毁");
+            this.threadLocalReadCarriage.remove();
             this.accessFile.close();
             this.channel.close();
         } catch (Exception e) {

@@ -82,6 +82,7 @@ public class JSharedMemQueue implements AutoCloseable {
             if (compare == 0) {
                 return writeCarriage;
             } else {
+                threadLocalWriteCarriage.remove();
                 writeCarriage.close(); // 旧的车厢应该销毁
                 JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
                 newWriteCarriage.mmap(FileChannel.MapMode.READ_WRITE);
@@ -109,6 +110,7 @@ public class JSharedMemQueue implements AutoCloseable {
             this.jSharedMemBaseInfo.close();
             JSharedMemCarriage writeCarriage = threadLocalWriteCarriage.get();
             if (writeCarriage != null) {
+                threadLocalWriteCarriage.remove();
                 writeCarriage.close();
             }
         } catch (Exception e) {

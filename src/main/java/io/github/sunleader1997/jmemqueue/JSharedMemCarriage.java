@@ -85,9 +85,10 @@ public class JSharedMemCarriage implements AutoCloseable {
         File[] files = listFiles(pathname -> {
             return pathname.lastModified() < cleanBefore;
         });
+        // 如果文件被消费者占用是无法成功删除的，所以每次都得遍历一遍
         for (File file : files) {
-            System.out.printf("CLEAN DAT " + file.getName());
-            file.delete();
+            boolean remove = file.delete();
+            System.out.printf("CLEAN DAT " + file.getName() + " STATUS: " + remove);
         }
     }
 
@@ -114,6 +115,10 @@ public class JSharedMemCarriage implements AutoCloseable {
     public int compareTo(long offset) {
         long carriageIndex = offset / capacity;
         return Long.compare(currentCarriageIndex, carriageIndex);
+    }
+
+    public File getCarriageFile() {
+        return this.carriageFile;
     }
 
     @Override
