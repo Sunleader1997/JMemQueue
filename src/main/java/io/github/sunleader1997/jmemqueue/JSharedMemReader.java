@@ -1,6 +1,7 @@
 package io.github.sunleader1997.jmemqueue;
 
 import io.github.sunleader1997.jmemqueue.exceptions.CarriageInitFailException;
+import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -22,6 +23,7 @@ public class JSharedMemReader implements AutoCloseable {
     private final FileChannel channel;
     private final ByteBuffer readerSharedMemory;
     private final String group;
+    private final TimeToLive timeToLive;
 
     private final int INDEX_READER_OFFSET = 0;
     /**
@@ -36,9 +38,10 @@ public class JSharedMemReader implements AutoCloseable {
      * @param jSharedMemBaseInfo
      * @param group              group 负责负载均衡 同kafka的group
      */
-    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, String group) {
+    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, String group, TimeToLive timeToLive) {
         this.group = group;
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
+        this.timeToLive = timeToLive;
         String carriagePath = getReaderPath();
         try {
             this.accessFile = new RandomAccessFile(carriagePath, "rw");
@@ -57,12 +60,15 @@ public class JSharedMemReader implements AutoCloseable {
                 return readCarriage;
             } else {
                 readCarriage.close();
-                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_ONLY);
+                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
+                // 如果映射失败，说明文件丢失
+                newReadCarriage.mmap(FileChannel.MapMode.READ_ONLY);
                 threadLocalReadCarriage.set(newReadCarriage);
                 return newReadCarriage;
             }
         } else {
-            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_ONLY);
+            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
+            newReadCarriage.mmap(FileChannel.MapMode.READ_ONLY);
             threadLocalReadCarriage.set(newReadCarriage);
             return newReadCarriage;
         }
@@ -98,14 +104,19 @@ public class JSharedMemReader implements AutoCloseable {
         }
     }
 
-    public JSharedMemSegment getSegment() {
-        long offset = getAndIncreaseOffset(); // cas 拉取到offset
-        if (offset < 0) return null; // 如果消费队列已空，则返回 null
-        JSharedMemSegment segment = getReadCarriage(offset).getSegment(offset);
-        if (!segment.isReadable()){ // 如果状态不是可读，则返回 null
-            return null;
+    public JSharedMemSegment getReadableSegment() {
+        while (true) {
+            long offset = getAndIncreaseOffset(); // cas 拉取到offset
+            if (offset < 0) return null; // 如果消费队列已空，则返回 null
+            JSharedMemCarriage readCarriage = getReadCarriage(offset);
+            if (readCarriage.exist()) {
+                JSharedMemSegment segment = readCarriage.getSegment(offset);
+                if (!segment.isReadable()) { // 如果状态不是可读，则返回 null
+                    return null;
+                }
+                return segment;
+            }
         }
-        return segment;
     }
 
     /**
@@ -116,7 +127,7 @@ public class JSharedMemReader implements AutoCloseable {
      */
     public byte[] dequeue() {
         // getSegment 做 offset increase 时已经保证了 offset 的唯一性
-        JSharedMemSegment segment = getSegment();
+        JSharedMemSegment segment = getReadableSegment();
         if (segment == null) { // 如果队列已空，则返回null
             return null;
         } // 如果有数据，则尝试修改状态为正在读取

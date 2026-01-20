@@ -1,5 +1,6 @@
 package io.github.sunleader1997.jmemqueue;
 
+import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -27,7 +28,7 @@ public class ConsumerTest {
     @Test
     public void produce() {
         // 创建共享内存队列
-        try (JSharedMemQueue queue = new JSharedMemQueue(TOPIC, CARRIAGE_CAPACITY, true)) {
+        try (JSharedMemQueue queue = new JSharedMemQueue(TOPIC, CARRIAGE_CAPACITY, false, new TimeToLive(10, TimeUnit.SECONDS))) {
             // 先生产一批消息
             System.out.println("开始生产消息...");
             for (int i = 0; i < MESSAGE_COUNT; i++) {
@@ -51,7 +52,7 @@ public class ConsumerTest {
             System.out.println("启动消费者线程: " + i);
             executor.execute(() -> {
                 // 创建同一个GROUP的消费者
-                try (JSharedMemReader reader = queue.createReader()) {
+                try (JSharedMemReader reader = queue.createReader("aaa")) {
                     while (!Thread.interrupted()) {
                         byte[] data = reader.dequeue();
                         if (data != null) {

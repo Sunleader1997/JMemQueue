@@ -1,8 +1,10 @@
 package io.github.sunleader1997.jmemqueue;
 
 import io.github.sunleader1997.jmemqueue.exceptions.CarriageIndexMatchException;
-import io.github.sunleader1997.jmemqueue.exceptions.CarriageInitFailException;
+import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -14,39 +16,79 @@ import java.nio.channels.FileChannel;
 public class JSharedMemCarriage implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
-    private final RandomAccessFile accessFile;
-    private final FileChannel channel;
-    private final ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
+    private final File carriageFile;
+    private RandomAccessFile accessFile;
+    private FileChannel channel;
+    private ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
+    private final TimeToLive timeToLive;
     // 当前车厢索引
     private final long currentCarriageIndex;
 
     private final long capacity;
+    private boolean exist = true;
 
-    /**
-     * @param jSharedMemBaseInfo 基础信息
-     */
-    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo) {
-        this(jSharedMemBaseInfo, jSharedMemBaseInfo.getTotalOffset(), FileChannel.MapMode.READ_WRITE);
-    }
-
-    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, FileChannel.MapMode mode) {
+    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         this.capacity = jSharedMemBaseInfo.getCarriage();
         // 链接当前共享内存
         this.currentCarriageIndex = offset / capacity;
         String carriagePath = getCarriagePath(this.currentCarriageIndex);
-        try {
-            this.accessFile = new RandomAccessFile(carriagePath, FileChannel.MapMode.READ_WRITE.equals(mode) ? "rw" : "r");
-            this.channel = accessFile.getChannel();
-            this.sharedMemory = channel.map(mode, 0, capacity * JSharedMemSegment.SMG_SIZE);
-        } catch (IOException e) {
-            throw new CarriageInitFailException();
-        }
+        this.carriageFile = new File(carriagePath);
+        this.timeToLive = timeToLive;
         System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
     }
 
+    /**
+     * 内存映射，
+     * read 模式下。如果文件不存在则 false
+     *
+     * @param mode
+     * @return
+     */
+    public void mmap(FileChannel.MapMode mode) {
+        try {
+            this.accessFile = new RandomAccessFile(this.carriageFile, FileChannel.MapMode.READ_WRITE.equals(mode) ? "rw" : "r");
+            this.channel = accessFile.getChannel();
+            this.sharedMemory = channel.map(mode, 0, capacity * JSharedMemSegment.SMG_SIZE);
+        } catch (IOException e) {
+            this.exist = false;
+        }
+    }
+
+    public boolean exist() {
+        return this.exist;
+    }
+
     public String getCarriagePath(long carriageIndex) {
-        return Dictionary.PARENT_DIR + jSharedMemBaseInfo.getTopic() + ".dat" + "." + carriageIndex;
+        return Dictionary.PARENT_DIR + getFilePrefix() + "." + carriageIndex;
+    }
+
+    public String getFilePrefix() {
+        return jSharedMemBaseInfo.getTopic() + ".dat";
+    }
+
+    private File[] listFiles(FileFilter fileFilter) {
+        File parent = new File(Dictionary.PARENT_DIR);
+        return parent.listFiles(pathname -> {
+            boolean isDirectory = pathname.isDirectory();
+            if (isDirectory) return false;
+            boolean matched = pathname.getName().startsWith(getFilePrefix());
+            if (matched) {
+                return fileFilter.accept(pathname);
+            }
+            return false;
+        });
+    }
+
+    private void cleanFile() {
+        long cleanBefore = timeToLive.getCleanBefore();
+        File[] files = listFiles(pathname -> {
+            return pathname.lastModified() < cleanBefore;
+        });
+        for (File file : files) {
+            System.out.printf("CLEAN DAT " + file.getName());
+            file.delete();
+        }
     }
 
     public JSharedMemSegment getSegment(long offset) {
@@ -78,8 +120,13 @@ public class JSharedMemCarriage implements AutoCloseable {
     public void close() {
         try {
             System.out.println("【Carriage】 执行销毁");
-            this.accessFile.close();
-            this.channel.close();
+            if (this.accessFile != null) {
+                this.accessFile.close();
+            }
+            if (this.channel != null) {
+                this.channel.close();
+            }
+            this.cleanFile();
         } catch (Exception e) {
             e.printStackTrace();
         }

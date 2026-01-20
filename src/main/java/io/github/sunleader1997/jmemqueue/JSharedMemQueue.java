@@ -1,7 +1,10 @@
 package io.github.sunleader1997.jmemqueue;
 
+import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
+
 import java.nio.channels.FileChannel;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class JSharedMemQueue implements AutoCloseable {
 
@@ -9,6 +12,7 @@ public class JSharedMemQueue implements AutoCloseable {
     // 每个线程自己维护一个车厢，防止竞态
     private final ThreadLocal<JSharedMemCarriage> threadLocalWriteCarriage = new ThreadLocal<>();
 
+    private final TimeToLive timeToLive;
 
     /**
      * 创建共享内存队列
@@ -17,11 +21,19 @@ public class JSharedMemQueue implements AutoCloseable {
      * @param capacity 队列容量（SMG个数）
      */
     public JSharedMemQueue(String topic, int capacity) {
-        this(topic, capacity, false);
+        this(topic, capacity, false, new TimeToLive(7, TimeUnit.DAYS));
     }
 
-    public JSharedMemQueue(String topic, int capacity, boolean overwrite) {
+    /**
+     * 创建共享内存队列
+     * @param topic TOPIC
+     * @param capacity 每个数据车厢可容纳的数据个数
+     * @param overwrite 是否覆盖现有数据从0开始
+     * @param timeToLive 数据保留时间（清理时机为创建新的数据车厢时）
+     */
+    public JSharedMemQueue(String topic, int capacity, boolean overwrite, TimeToLive timeToLive) {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity, overwrite); // 基础信息
+        this.timeToLive = timeToLive;
     }
 
     /**
@@ -40,7 +52,7 @@ public class JSharedMemQueue implements AutoCloseable {
      * @param group 指定 group 名称，同 kafka 的 group，消息将在 group 内负载均衡
      */
     public JSharedMemReader createReader(String group) {
-        return new JSharedMemReader(this.jSharedMemBaseInfo, group);
+        return new JSharedMemReader(this.jSharedMemBaseInfo, group, timeToLive);
     }
 
     /**
@@ -71,13 +83,15 @@ public class JSharedMemQueue implements AutoCloseable {
                 return writeCarriage;
             } else {
                 writeCarriage.close(); // 旧的车厢应该销毁
-                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_WRITE);
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
+                newWriteCarriage.mmap(FileChannel.MapMode.READ_WRITE);
                 threadLocalWriteCarriage.set(newWriteCarriage);
                 if (compare > 0) System.out.println("!!! 方法调用有严重问题");
                 return newWriteCarriage;
             }
         } else {
-            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, FileChannel.MapMode.READ_WRITE);
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
+            newWriteCarriage.mmap(FileChannel.MapMode.READ_WRITE);
             threadLocalWriteCarriage.set(newWriteCarriage);
             return newWriteCarriage;
         }
