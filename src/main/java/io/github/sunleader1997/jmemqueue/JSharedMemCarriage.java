@@ -1,13 +1,14 @@
 package io.github.sunleader1997.jmemqueue;
 
 import io.github.sunleader1997.jmemqueue.exceptions.CarriageIndexMatchException;
+import io.github.sunleader1997.jmemqueue.ttl.JCleaner;
 import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
@@ -19,7 +20,7 @@ public class JSharedMemCarriage implements AutoCloseable {
     private final File carriageFile;
     private RandomAccessFile accessFile;
     private FileChannel channel;
-    private ByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
+    private MappedByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
     private final TimeToLive timeToLive;
     // 当前车厢索引
     private final long currentCarriageIndex;
@@ -130,6 +131,9 @@ public class JSharedMemCarriage implements AutoCloseable {
             }
             if (this.channel != null) {
                 this.channel.close();
+            }
+            if (this.sharedMemory != null) {
+                JCleaner.clean(this.sharedMemory);
             }
             this.cleanFile();
         } catch (Exception e) {

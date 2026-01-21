@@ -1,6 +1,7 @@
 package io.github.sunleader1997.jmemqueue;
 
 import io.github.sunleader1997.jmemqueue.exceptions.CarriageInitFailException;
+import io.github.sunleader1997.jmemqueue.ttl.JCleaner;
 import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
 import java.io.File;
@@ -161,6 +162,7 @@ public class JSharedMemReader implements AutoCloseable {
             this.accessFile.close();
             this.channel.close();
             if (this.needClean) {
+                JCleaner.clean(this.readerSharedMemory);
                 boolean remove = this.readerFile.delete();
                 System.out.println("DELETE READER: " + this.readerFile.getName() + " STATUS " + remove);
             }
