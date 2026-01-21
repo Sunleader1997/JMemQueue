@@ -43,12 +43,12 @@ public class JSharedMemQueue implements AutoCloseable {
      * @return 消费者
      */
     public JSharedMemReader createReader() {
-        return createReader(UUID.randomUUID().toString());
+        return createReader(UUID.randomUUID().toString()).needClean();
     }
 
     /**
-     * 创建一个读取器
-     *
+     * 创建一个临时读取器
+     * 临时 reader 在销毁时清理文件
      * @param group 指定 group 名称，同 kafka 的 group，消息将在 group 内负载均衡
      */
     public JSharedMemReader createReader(String group) {

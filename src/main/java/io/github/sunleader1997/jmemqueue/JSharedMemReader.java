@@ -3,12 +3,13 @@ package io.github.sunleader1997.jmemqueue;
 import io.github.sunleader1997.jmemqueue.exceptions.CarriageInitFailException;
 import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
@@ -19,11 +20,13 @@ public class JSharedMemReader implements AutoCloseable {
     private static final long BASE_SIZE = 1024 * 1024;
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ThreadLocal<JSharedMemCarriage> threadLocalReadCarriage = new ThreadLocal<>();
+    private final File readerFile;
     private final RandomAccessFile accessFile;
     private final FileChannel channel;
-    private final ByteBuffer readerSharedMemory;
+    private final MappedByteBuffer readerSharedMemory;
     private final String group;
     private final TimeToLive timeToLive;
+    private boolean needClean = false;
 
     private final int INDEX_READER_OFFSET = 0;
     /**
@@ -44,7 +47,8 @@ public class JSharedMemReader implements AutoCloseable {
         this.timeToLive = timeToLive;
         String carriagePath = getReaderPath();
         try {
-            this.accessFile = new RandomAccessFile(carriagePath, "rw");
+            this.readerFile = new File(carriagePath);
+            this.accessFile = new RandomAccessFile(this.readerFile, "rw");
             this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
         } catch (IOException e) {
@@ -79,9 +83,10 @@ public class JSharedMemReader implements AutoCloseable {
         return (long) LONG_HANDLE.getVolatile(readerSharedMemory, INDEX_READER_OFFSET);
     }
 
-    public JSharedMemCarriage getCurrentCarriage(){
+    public JSharedMemCarriage getCurrentCarriage() {
         return threadLocalReadCarriage.get();
     }
+
     /**
      * 重置offset到指定位置
      *
@@ -142,13 +147,23 @@ public class JSharedMemReader implements AutoCloseable {
         return Dictionary.PARENT_DIR + jSharedMemBaseInfo.getTopic() + "_" + group + ".reader";
     }
 
+    public JSharedMemReader needClean() {
+        this.needClean = true;
+        return this;
+    }
+
     @Override
     public void close() {
         try {
             System.out.println("【Reader】 执行销毁");
             this.threadLocalReadCarriage.remove();
+            this.readerSharedMemory.force();
             this.accessFile.close();
             this.channel.close();
+            if (this.needClean) {
+                boolean remove = this.readerFile.delete();
+                System.out.println("DELETE READER: " + this.readerFile.getName() + " STATUS " + remove);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
