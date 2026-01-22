@@ -12,6 +12,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 
 /**
  * 读取器
@@ -46,9 +47,9 @@ public class JSharedMemReader implements AutoCloseable {
         this.group = group;
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         this.timeToLive = timeToLive;
-        String carriagePath = getReaderPath();
+        Path carriagePath = getReaderPath();
         try {
-            this.readerFile = new File(carriagePath);
+            this.readerFile = carriagePath.toFile();
             this.accessFile = new RandomAccessFile(this.readerFile, "rw");
             this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
@@ -144,8 +145,8 @@ public class JSharedMemReader implements AutoCloseable {
         return segment.readContent();
     }
 
-    public String getReaderPath() {
-        return Dictionary.PARENT_DIR + jSharedMemBaseInfo.getTopic() + "_" + group + ".reader";
+    public Path getReaderPath() {
+        return Dictionary.getTopicDir(jSharedMemBaseInfo.getTopic()).resolve(group + ".reader");
     }
 
     public JSharedMemReader needClean() {

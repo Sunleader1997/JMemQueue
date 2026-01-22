@@ -10,11 +10,13 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 
 /**
  * 车厢: 存储 SEGMENT 顺序集合
  */
 public class JSharedMemCarriage implements AutoCloseable {
+    public static final String CARRIAGE_FILE_ENDS = ".carriage";
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final File carriageFile;
@@ -33,8 +35,8 @@ public class JSharedMemCarriage implements AutoCloseable {
         this.capacity = jSharedMemBaseInfo.getCarriage();
         // 链接当前共享内存
         this.currentCarriageIndex = offset / capacity;
-        String carriagePath = getCarriagePath(this.currentCarriageIndex);
-        this.carriageFile = new File(carriagePath);
+        Path carriagePath = getCarriagePath(this.currentCarriageIndex);
+        this.carriageFile = carriagePath.toFile();
         this.timeToLive = timeToLive;
         System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
     }
@@ -60,20 +62,20 @@ public class JSharedMemCarriage implements AutoCloseable {
         return this.exist;
     }
 
-    public String getCarriagePath(long carriageIndex) {
-        return Dictionary.PARENT_DIR + getFilePrefix() + "." + carriageIndex;
+    public Path getCarriagePath(long carriageIndex) {
+        return Dictionary.getTopicDir(this.jSharedMemBaseInfo.getTopic()).resolve(getCarriageFileName(carriageIndex));
     }
 
-    public String getFilePrefix() {
-        return jSharedMemBaseInfo.getTopic() + ".dat";
+    public String getCarriageFileName(long carriageIndex) {
+        return carriageIndex + CARRIAGE_FILE_ENDS;
     }
 
     private File[] listFiles(FileFilter fileFilter) {
-        File parent = new File(Dictionary.PARENT_DIR);
-        return parent.listFiles(pathname -> {
+        Path parent = getCarriagePath(0).getParent();
+        return parent.toFile().listFiles(pathname -> {
             boolean isDirectory = pathname.isDirectory();
             if (isDirectory) return false;
-            boolean matched = pathname.getName().startsWith(getFilePrefix());
+            boolean matched = pathname.getName().endsWith(CARRIAGE_FILE_ENDS);
             if (matched) {
                 return fileFilter.accept(pathname);
             }

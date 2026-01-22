@@ -168,9 +168,9 @@ dequeue返回null次数: 0
 
 JMemQueue 在系统中创建以下文件：
 
-- `${tmp}/JSMQ/ipc_{topic}.base` - 队列基础信息文件
-- `${tmp}/JSMQ/ipc_{topic}.dat.{n}` - 数据车厢文件
-- `${tmp}/JSMQ/ipc_{topic}.reader` - 读取器状态文件
+- `${tmp}/JSMQ/${topic}/${topic}.base` - 队列基础信息文件
+- `${tmp}/JSMQ/${topic}/${n}.carriage` - 数据车厢文件
+- `${tmp}/JSMQ/${topic}/${group}.reader` - 读取器状态文件
 
 ## 🧪 测试套件
 

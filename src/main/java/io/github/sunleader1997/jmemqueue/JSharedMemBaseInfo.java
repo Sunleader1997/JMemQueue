@@ -10,6 +10,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 
 /**
  * 队列基础信息
@@ -29,8 +30,8 @@ public class JSharedMemBaseInfo implements AutoCloseable {
 
     public JSharedMemBaseInfo(String topic, int carriage, boolean overwrite) {
         this.topic = topic;
-        String path = Dictionary.PARENT_DIR + topic + ".base";
-        File file = new File(path);
+        Path path = Dictionary.getAndMakeTopicDir(topic).resolve(topic + ".base");
+        File file = path.toFile();
         try {
             this.accessFile = new RandomAccessFile(file, "rw");
             this.channel = accessFile.getChannel();
