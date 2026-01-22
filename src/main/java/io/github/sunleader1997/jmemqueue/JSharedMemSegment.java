@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
  */
 public class JSharedMemSegment {
     /**
-     * 单个SMG大小: 1KB
+     * 单个SMG大小
      * 如果不固定单个数据元大小的话，就无法多线程enqueue，dequeue
      */
     public final int smgSize;
@@ -41,14 +41,14 @@ public class JSharedMemSegment {
 
     /**
      *
-     * @param buffer  carriage 的 ByteBuffer
-     * @param smgSize 单个数据元的容量，同一个Carriage里的size必须一致
-     * @param index   索引
+     * @param buffer         carriage 的 ByteBuffer
+     * @param maxContentSize 消息容量 单位（B）
+     * @param index          索引
      */
-    public JSharedMemSegment(ByteBuffer buffer, int smgSize, int index) {
+    public JSharedMemSegment(ByteBuffer buffer, int maxContentSize, int index) {
         this.buffer = buffer;
-        this.smgSize = smgSize;
-        this.maxContentSize = smgSize - CONTENT_OFFSET;
+        this.maxContentSize = maxContentSize;
+        this.smgSize = maxContentSize + CONTENT_OFFSET;
         this.byteIndex = index * smgSize;
     }
 
@@ -101,7 +101,6 @@ public class JSharedMemSegment {
 
     /**
      * 写入数据内容
-     * TODO 如果数据超出最大值，是否应该切换到下一个SMG
      */
     public void writeContent(byte[] data) {
         if (data.length > maxContentSize) {

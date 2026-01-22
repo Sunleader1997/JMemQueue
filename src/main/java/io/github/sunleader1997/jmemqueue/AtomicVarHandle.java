@@ -23,4 +23,16 @@ public class AtomicVarHandle {
     public static boolean compareAndSetInt(Buffer buffer, int offset, int expectedState, int newState) {
         return INT_HANDLE.compareAndSet(buffer, offset, expectedState, newState);
     }
+
+    public static long getLong(Buffer buffer, int offset) {
+        return (long) LONG_HANDLE.getVolatile(buffer, offset);
+    }
+
+    public static void setLong(Buffer buffer, int offset, long newState) {
+        LONG_HANDLE.setVolatile(buffer, offset, newState);
+    }
+
+    public static boolean compareAndSetLong(Buffer buffer, int offset, long expectedState, long newState) {
+        return LONG_HANDLE.compareAndSet(buffer, offset, expectedState, newState);
+    }
 }

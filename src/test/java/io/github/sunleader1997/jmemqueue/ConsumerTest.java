@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class ConsumerTest {
 
+    private static final int MSG_SIZE = 1000; // 一个数据单元 1KB
     private static final int CARRIAGE_CAPACITY = 1024 * 1000; // 车厢大小
     private static final int MESSAGE_COUNT = CARRIAGE_CAPACITY; // 总数据量
     private static final int BUSINESS_THREAD_COUNT = 4; // 业务处理线程数
@@ -28,7 +29,7 @@ public class ConsumerTest {
     @Test
     public void produce() {
         // 创建共享内存队列
-        try (JSharedMemQueue queue = new JSharedMemQueue(TOPIC, CARRIAGE_CAPACITY, false, new TimeToLive(10, TimeUnit.SECONDS))) {
+        try (JSharedMemQueue queue = new JSharedMemQueue(TOPIC, MSG_SIZE, CARRIAGE_CAPACITY, false, new TimeToLive(10, TimeUnit.SECONDS))) {
             // 先生产一批消息
             System.out.println("开始生产消息...");
             for (int i = 0; i < MESSAGE_COUNT; i++) {
@@ -42,7 +43,7 @@ public class ConsumerTest {
 
     @Test
     public void createConsumer() throws Exception {
-        JSharedMemQueue queue = new JSharedMemQueue(TOPIC, CARRIAGE_CAPACITY);
+        JSharedMemQueue queue = new JSharedMemQueue(TOPIC, MSG_SIZE, CARRIAGE_CAPACITY);
         AtomicLong consumedCount = new AtomicLong(0);
         AtomicInteger nullCount = new AtomicInteger(0);
         CountDownLatch consumerLatch = new CountDownLatch(BUSINESS_THREAD_COUNT);

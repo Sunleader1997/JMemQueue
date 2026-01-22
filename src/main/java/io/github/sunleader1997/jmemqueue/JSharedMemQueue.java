@@ -13,6 +13,7 @@ public class JSharedMemQueue implements AutoCloseable {
     private final ThreadLocal<JSharedMemCarriage> threadLocalWriteCarriage = new ThreadLocal<>();
 
     private final TimeToLive timeToLive;
+    public static final int DEF_MSG_SIZE = 1000;
 
     /**
      * 创建共享内存队列
@@ -21,18 +22,28 @@ public class JSharedMemQueue implements AutoCloseable {
      * @param capacity 队列容量（SMG个数）
      */
     public JSharedMemQueue(String topic, int capacity) {
-        this(topic, capacity, false, new TimeToLive(7, TimeUnit.DAYS));
+        this(topic, DEF_MSG_SIZE, capacity, false, new TimeToLive(7, TimeUnit.DAYS));
+    }
+    /**
+     * 创建共享内存队列
+     *
+     * @param topic    MappedByteBuffer 映射地址
+     * @param capacity 队列容量（SMG个数）
+     */
+    public JSharedMemQueue(String topic,int maxMsgSize, int capacity) {
+        this(topic, maxMsgSize, capacity, false, new TimeToLive(7, TimeUnit.DAYS));
     }
 
     /**
      * 创建共享内存队列
-     * @param topic TOPIC
-     * @param capacity 每个数据车厢可容纳的数据个数
-     * @param overwrite 是否覆盖现有数据从0开始
+     *
+     * @param topic      TOPIC
+     * @param capacity   每个数据车厢可容纳的数据个数
+     * @param overwrite  是否覆盖现有数据从0开始
      * @param timeToLive 数据保留时间（清理时机为创建新的数据车厢时）
      */
-    public JSharedMemQueue(String topic, int capacity, boolean overwrite, TimeToLive timeToLive) {
-        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, capacity, overwrite); // 基础信息
+    public JSharedMemQueue(String topic, int msgMaxSize, int capacity, boolean overwrite, TimeToLive timeToLive) {
+        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, msgMaxSize, capacity, overwrite); // 基础信息
         this.timeToLive = timeToLive;
     }
 
@@ -49,6 +60,7 @@ public class JSharedMemQueue implements AutoCloseable {
     /**
      * 创建一个临时读取器
      * 临时 reader 在销毁时清理文件
+     *
      * @param group 指定 group 名称，同 kafka 的 group，消息将在 group 内负载均衡
      */
     public JSharedMemReader createReader(String group) {
@@ -84,13 +96,13 @@ public class JSharedMemQueue implements AutoCloseable {
             } else {
                 threadLocalWriteCarriage.remove();
                 writeCarriage.close(); // 旧的车厢应该销毁
-                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive,FileChannel.MapMode.READ_WRITE,0);
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_WRITE);
                 threadLocalWriteCarriage.set(newWriteCarriage);
                 if (compare > 0) System.out.println("!!! 方法调用有严重问题");
                 return newWriteCarriage;
             }
         } else {
-            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive,FileChannel.MapMode.READ_WRITE,0);
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_WRITE);
             threadLocalWriteCarriage.set(newWriteCarriage);
             return newWriteCarriage;
         }

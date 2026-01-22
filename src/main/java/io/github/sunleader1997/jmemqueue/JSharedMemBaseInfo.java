@@ -26,9 +26,12 @@ public class JSharedMemBaseInfo implements AutoCloseable {
     private final RandomAccessFile accessFile;
     // 偏移量的索引开始位置 long 数据，占8位
     private static final int INDEX_TOTAL_OFFSET = 0;
+    // 车厢容量
     private static final int INDEX_CARRIAGE = 8;
+    private static final int INDEX_SEGMENT_SIZE = 16;
+    private static final int NEXT_RENAME = 20;
 
-    public JSharedMemBaseInfo(String topic, int carriage, boolean overwrite) {
+    public JSharedMemBaseInfo(String topic, int msgMaxSize, int carriage, boolean overwrite) {
         this.topic = topic;
         Path path = Dictionary.getAndMakeTopicDir(topic).resolve(topic + ".base");
         File file = path.toFile();
@@ -40,6 +43,7 @@ public class JSharedMemBaseInfo implements AutoCloseable {
             throw new CarriageInitFailException(e);
         }
         this.setCarriage(carriage);
+        this.setMsgMaxSize(msgMaxSize);
         if (overwrite) {
             this.setTotalOffset(0L);
         }
@@ -67,6 +71,14 @@ public class JSharedMemBaseInfo implements AutoCloseable {
 
     public void setCarriage(long carriage) {
         LONG_HANDLE.set(sharedBaseMemory, INDEX_CARRIAGE, carriage);
+    }
+
+    public int getMsgMaxSize() {
+        return AtomicVarHandle.getInt(sharedBaseMemory, INDEX_SEGMENT_SIZE);
+    }
+
+    public void setMsgMaxSize(int msgMaxSize) {
+        AtomicVarHandle.setInt(sharedBaseMemory, INDEX_SEGMENT_SIZE, msgMaxSize);
     }
 
     public long getAndIncreaseTotalOffset() {
