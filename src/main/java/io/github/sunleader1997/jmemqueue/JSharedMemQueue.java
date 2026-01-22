@@ -84,15 +84,13 @@ public class JSharedMemQueue implements AutoCloseable {
             } else {
                 threadLocalWriteCarriage.remove();
                 writeCarriage.close(); // 旧的车厢应该销毁
-                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
-                newWriteCarriage.mmap(FileChannel.MapMode.READ_WRITE);
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive,FileChannel.MapMode.READ_WRITE,0);
                 threadLocalWriteCarriage.set(newWriteCarriage);
                 if (compare > 0) System.out.println("!!! 方法调用有严重问题");
                 return newWriteCarriage;
             }
         } else {
-            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
-            newWriteCarriage.mmap(FileChannel.MapMode.READ_WRITE);
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive,FileChannel.MapMode.READ_WRITE,0);
             threadLocalWriteCarriage.set(newWriteCarriage);
             return newWriteCarriage;
         }

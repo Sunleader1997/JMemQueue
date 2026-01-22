@@ -6,7 +6,6 @@ import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -22,15 +21,25 @@ public class JSharedMemCarriage implements AutoCloseable {
     private final File carriageFile;
     private RandomAccessFile accessFile;
     private FileChannel channel;
+    private MappedByteBuffer baseConfigBuffer; // 基础配置信息
     private MappedByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
     private final TimeToLive timeToLive;
     // 当前车厢索引
     private final long currentCarriageIndex;
-
+    // 每个仓库的容量
     private final long capacity;
     private boolean exist = true;
 
-    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive) {
+    /**
+     * 数据元大小开始位置
+     */
+    private static final int SGM_SIZE_OFFSET = 0;
+    /**
+     * segment 元数据开始位置
+     */
+    private static final int SEGMENT_OFFSET = 1024;
+
+    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive, FileChannel.MapMode mode, int sgmSize) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         this.capacity = jSharedMemBaseInfo.getCarriage();
         // 链接当前共享内存
@@ -39,24 +48,37 @@ public class JSharedMemCarriage implements AutoCloseable {
         this.carriageFile = carriagePath.toFile();
         this.timeToLive = timeToLive;
         System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
+        mmap(mode, sgmSize);
     }
 
-    /**
-     * 内存映射，
-     * read 模式下。如果文件不存在则 false
-     *
-     * @param mode
-     * @return
-     */
-    public void mmap(FileChannel.MapMode mode) {
+    private void mmap(FileChannel.MapMode mode, int sgmSize) {
         try {
-            this.accessFile = new RandomAccessFile(this.carriageFile, FileChannel.MapMode.READ_WRITE.equals(mode) ? "rw" : "r");
-            this.channel = accessFile.getChannel();
-            this.sharedMemory = channel.map(mode, 0, capacity * JSharedMemSegment.SMG_SIZE);
-        } catch (IOException e) {
+            // read 模式下，文件必须存在
+            if (FileChannel.MapMode.READ_ONLY.equals(mode)) {
+                if (this.carriageFile.exists()) {
+                    this.accessFile = new RandomAccessFile(this.carriageFile, "r");
+                    this.channel = accessFile.getChannel();
+                    this.baseConfigBuffer = channel.map(mode, SGM_SIZE_OFFSET, SEGMENT_OFFSET);
+                    this.sharedMemory = channel.map(mode, SEGMENT_OFFSET, capacity * sgmSize);
+                } else {
+                    this.exist = false;
+                }
+            } else { // write 模式，以下会自动创建
+                this.accessFile = new RandomAccessFile(this.carriageFile, "rw");
+                this.channel = accessFile.getChannel();
+                this.baseConfigBuffer = channel.map(mode, 0, SEGMENT_OFFSET);
+                AtomicVarHandle.setInt(this.baseConfigBuffer, SGM_SIZE_OFFSET, sgmSize);
+                this.sharedMemory = channel.map(mode, SEGMENT_OFFSET, capacity * sgmSize);
+            }
+        } catch (Exception e) {
             this.exist = false;
         }
     }
+
+    public int getSgmSize() {
+        return AtomicVarHandle.getInt(this.baseConfigBuffer, SGM_SIZE_OFFSET);
+    }
+
 
     public boolean exist() {
         return this.exist;
@@ -99,7 +121,7 @@ public class JSharedMemCarriage implements AutoCloseable {
         int compare = compareTo(offset);
         if (compare == 0) { // 直接取出数据块
             int index = (int) (offset % capacity);
-            return new JSharedMemSegment(sharedMemory, index);
+            return new JSharedMemSegment(sharedMemory, getSgmSize(), index);
         } else {
             throw new CarriageIndexMatchException("【车厢】当前车厢已过时" + currentCarriageIndex);
         }
@@ -133,6 +155,9 @@ public class JSharedMemCarriage implements AutoCloseable {
             }
             if (this.channel != null) {
                 this.channel.close();
+            }
+            if (this.baseConfigBuffer != null) {
+                JCleaner.clean(this.baseConfigBuffer);
             }
             if (this.sharedMemory != null) {
                 JCleaner.clean(this.sharedMemory);

@@ -67,15 +67,12 @@ public class JSharedMemReader implements AutoCloseable {
             } else {
                 threadLocalReadCarriage.remove();
                 readCarriage.close();
-                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
-                // 如果映射失败，说明文件丢失
-                newReadCarriage.mmap(FileChannel.MapMode.READ_ONLY);
+                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_ONLY, 0);
                 threadLocalReadCarriage.set(newReadCarriage);
                 return newReadCarriage;
             }
         } else {
-            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive);
-            newReadCarriage.mmap(FileChannel.MapMode.READ_ONLY);
+            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_ONLY, 0);
             threadLocalReadCarriage.set(newReadCarriage);
             return newReadCarriage;
         }

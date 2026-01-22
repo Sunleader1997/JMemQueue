@@ -1,9 +1,6 @@
 package io.github.sunleader1997.jmemqueue;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  * 一个SMG
@@ -11,8 +8,10 @@ import java.nio.ByteOrder;
 public class JSharedMemSegment {
     /**
      * 单个SMG大小: 1KB
+     * 如果不固定单个数据元大小的话，就无法多线程enqueue，dequeue
      */
-    public static final int SMG_SIZE = 1024;
+    public final int smgSize;
+    public final int maxContentSize;
     /**
      * 状态字段偏移量
      */
@@ -25,10 +24,6 @@ public class JSharedMemSegment {
      * 内容字段偏移量
      */
     public static final int CONTENT_OFFSET = 8;
-    /**
-     * 最大内容大小
-     */
-    public static final int MAX_CONTENT_SIZE = SMG_SIZE - CONTENT_OFFSET; // 1024 - CONTENT_OFFSET 字节
 
     /**
      * 状态：空闲
@@ -36,41 +31,32 @@ public class JSharedMemSegment {
     public static final int STATE_IDLE = 0;
 
     /**
-     * 状态：写占用
-     */
-    public static final int STATE_WRITING = 1;
-
-    /**
      * 状态：可读(写完毕)
      */
     public static final int STATE_READABLE = 2;
 
-    /**
-     * 状态：读占用
-     */
-    public static final int STATE_READING = 3;
-
 
     private final ByteBuffer buffer; // 整个内存分区
     private final int byteIndex; // 当前SMG的起始偏移量
-    /**
-     * VarHandle用于对ByteBuffer进行CAS操作
-     */
-    private static final VarHandle INT_HANDLE = MethodHandles.byteBufferViewVarHandle(
-            int[].class,
-            ByteOrder.nativeOrder()
-    );
 
-    public JSharedMemSegment(ByteBuffer buffer, int index) {
+    /**
+     *
+     * @param buffer  carriage 的 ByteBuffer
+     * @param smgSize 单个数据元的容量，同一个Carriage里的size必须一致
+     * @param index   索引
+     */
+    public JSharedMemSegment(ByteBuffer buffer, int smgSize, int index) {
         this.buffer = buffer;
-        this.byteIndex = index * SMG_SIZE;
+        this.smgSize = smgSize;
+        this.maxContentSize = smgSize - CONTENT_OFFSET;
+        this.byteIndex = index * smgSize;
     }
 
     /**
      * 获取指定位置的状态
      */
     public static int getCurrentState(ByteBuffer buffer, int offset) {
-        return (int) INT_HANDLE.getVolatile(buffer, offset + STATE_OFFSET);
+        return AtomicVarHandle.getInt(buffer, offset + STATE_OFFSET);
     }
 
     /**
@@ -78,7 +64,7 @@ public class JSharedMemSegment {
      * 可作用于不同进程下对同一个数值的cas操作
      */
     public boolean compareAndSetState(int expectedState, int newState) {
-        return INT_HANDLE.compareAndSet(buffer, byteIndex + STATE_OFFSET, expectedState, newState);
+        return AtomicVarHandle.compareAndSetInt(buffer, byteIndex + STATE_OFFSET, expectedState, newState);
     }
 
     public boolean isState(int state) {
@@ -89,14 +75,14 @@ public class JSharedMemSegment {
      * 读取状态
      */
     public int getState() {
-        return (int) INT_HANDLE.getVolatile(buffer, byteIndex + STATE_OFFSET);
+        return AtomicVarHandle.getInt(buffer, byteIndex + STATE_OFFSET);
     }
 
     /**
      * 设置状态
      */
     public void setState(int newState) {
-        INT_HANDLE.setVolatile(buffer, byteIndex + STATE_OFFSET, newState);
+        AtomicVarHandle.setInt(buffer, byteIndex + STATE_OFFSET, newState);
     }
 
     /**
@@ -118,8 +104,8 @@ public class JSharedMemSegment {
      * TODO 如果数据超出最大值，是否应该切换到下一个SMG
      */
     public void writeContent(byte[] data) {
-        if (data.length > MAX_CONTENT_SIZE) {
-            throw new IllegalArgumentException("数据大小超过最大限制: " + MAX_CONTENT_SIZE);
+        if (data.length > maxContentSize) {
+            throw new IllegalArgumentException("数据大小超过最大限制: " + maxContentSize);
         }
         this.setSize(data.length);
         buffer.put(byteIndex + CONTENT_OFFSET, data);
@@ -135,7 +121,7 @@ public class JSharedMemSegment {
         return data;
     }
 
-    public boolean isReadable(){
+    public boolean isReadable() {
         return isState(JSharedMemSegment.STATE_READABLE);
     }
 
