@@ -37,14 +37,6 @@ JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进
 | 4-7       | 4 字节      | 数据大小（实际内容长度）                                                           |
 | 8-Int.MAX | Int.MAX-8 | 实际数据内容(<2G)                                                            |
 
-### 车厢- Carriage
-每个车厢占用 SMG_SIZE * capacity 大小，结构如下
-
-| 偏移量           | 大小      | 描述          |
-|---------------|---------|-------------|
-| 0-3           | 4 字节    | 车厢内每个数据单元大小 |
-| 4-1023        | 1020 字节 | 预留配置        |
-| 1024-MAX_SIZE | --      | 车厢内的数据单元    |
 
 ### 核心组件
 
@@ -97,13 +89,14 @@ import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
 
 // 创建共享内存队列
 JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
+JSharedMemProducer producer = queue.createProducer();
+// 如果需要定义数据清理机制
+// producer.setTimeToLive(1, TimeUnit.DAYS);
 
 // 写入数据
 String message = "Hello, Shared Memory Queue!";
 byte[] data = message.getBytes(StandardCharsets.UTF_8);
-boolean success = queue.enqueue(data);
-
-System.out.println("消息入队: "+success);
+boolean success = producer.enqueue(data);
 ```
 
 ### 消费者示例

@@ -7,12 +7,11 @@ import io.github.sunleader1997.jmemqueue.ttl.TimeToLive;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 读取器
@@ -20,41 +19,99 @@ import java.nio.file.Path;
  */
 public class JSharedMemReader implements AutoCloseable {
     private static final long BASE_SIZE = 1024 * 1024;
-    private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final ThreadLocal<JSharedMemCarriage> threadLocalReadCarriage = new ThreadLocal<>();
-    private final File readerFile;
-    private final RandomAccessFile accessFile;
-    private final FileChannel channel;
-    private final MappedByteBuffer readerSharedMemory;
+    private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final String group;
-    private final TimeToLive timeToLive;
+    private final File readerFile;
     private boolean needClean = false;
+    private TimeToLive timeToLive;
+
+    private RandomAccessFile accessFile;
+    private FileChannel channel;
+    private MappedByteBuffer readerSharedMemory;
 
     private final int INDEX_READER_OFFSET = 0;
-    /**
-     * VarHandle用于对ByteBuffer进行CAS操作
-     */
-    private static final VarHandle LONG_HANDLE = MethodHandles.byteBufferViewVarHandle(
-            long[].class,
-            ByteOrder.nativeOrder()
-    );
 
     /**
-     * @param jSharedMemBaseInfo
-     * @param group              group 负责负载均衡 同kafka的group
+     * 创建默认的消费者
+     * 随机group，从头消费
+     *
+     * @param topic
      */
-    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, String group, TimeToLive timeToLive) {
+    public JSharedMemReader(String topic) {
+        this(topic, UUID.randomUUID().toString());
+        needClean();
+    }
+
+    public JSharedMemReader(String topic, String group) {
+        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, 0, 0, false); // 基础信息
+        this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_ONLY); // 读模式
         this.group = group;
-        this.jSharedMemBaseInfo = jSharedMemBaseInfo;
-        this.timeToLive = timeToLive;
         Path carriagePath = getReaderPath();
+        this.readerFile = carriagePath.toFile();
+        this.mmap();
+    }
+
+    /**
+     * 挂载数据
+     */
+    public void mmap() {
         try {
-            this.readerFile = carriagePath.toFile();
             this.accessFile = new RandomAccessFile(this.readerFile, "rw");
             this.channel = accessFile.getChannel();
             this.readerSharedMemory = channel.map(FileChannel.MapMode.READ_WRITE, 0, BASE_SIZE);
         } catch (IOException e) {
             throw new CarriageInitFailException();
+        }
+    }
+
+    /**
+     * 出队操作 - 读取数据（支持超时等待）
+     * 查找当前位置，按顺序读取, 没有数据则等待
+     *
+     * @return 读取到的数据，如果队列为空或超时返回null
+     */
+    public byte[] dequeue() {
+        if (this.jSharedMemBaseInfo.isMapped()) {
+            // getSegment 做 offset increase 时已经保证了 offset 的唯一性
+            JSharedMemSegment segment = getReadableSegment();
+            if (segment == null) { // 如果队列已空，则返回null
+                return null;
+            } // 如果有数据，则尝试修改状态为正在读取
+            return segment.readContent();
+        }
+        return null;
+    }
+
+    public JSharedMemSegment getReadableSegment() {
+        while (true) {
+            long offset = getAndIncreaseOffset(); // cas 拉取到offset
+            if (offset < 0) return null; // 如果消费队列已空，则返回 null
+            JSharedMemCarriage readCarriage = getReadCarriage(offset);
+            if (readCarriage.exist()) {
+                JSharedMemSegment segment = readCarriage.getSegment(offset);
+                if (!segment.isReadable()) { // 如果状态不是可读，则返回 null
+                    return null;
+                }
+                return segment;
+            }
+        }
+    }
+
+    /**
+     * 使用 CAS方式尝试将状态从 expectedState 改为 newState
+     * 可作用于不同进程下对同一个数值的cas操作
+     *
+     * @return -1 表示队列已空
+     */
+    public long getAndIncreaseOffset() {
+        while (true) {
+            long offset = getReaderOffset();
+            if (offset >= jSharedMemBaseInfo.readTotalOffset()) {
+                return -1;
+            }
+            boolean suc = AtomicVarHandle.compareAndSetLong(readerSharedMemory, INDEX_READER_OFFSET, offset, offset + 1);
+            if (suc) return offset; // false 时说明offset被其他线程获取到
         }
     }
 
@@ -79,67 +136,11 @@ public class JSharedMemReader implements AutoCloseable {
     }
 
     public long getReaderOffset() {
-        return (long) LONG_HANDLE.getVolatile(readerSharedMemory, INDEX_READER_OFFSET);
+        return AtomicVarHandle.getLong(readerSharedMemory, INDEX_READER_OFFSET);
     }
 
     public JSharedMemCarriage getCurrentCarriage() {
         return threadLocalReadCarriage.get();
-    }
-
-    /**
-     * 重置offset到指定位置
-     *
-     * @param offset
-     */
-    public void commitOffset(long offset) {
-        LONG_HANDLE.set(readerSharedMemory, INDEX_READER_OFFSET, offset);
-    }
-
-    /**
-     * 使用 CAS方式尝试将状态从 expectedState 改为 newState
-     * 可作用于不同进程下对同一个数值的cas操作
-     *
-     * @return -1 表示队列已空
-     */
-    public long getAndIncreaseOffset() {
-        while (true) {
-            long offset = getReaderOffset();
-            if (offset >= jSharedMemBaseInfo.getTotalOffset()) {
-                return -1;
-            }
-            boolean suc = LONG_HANDLE.compareAndSet(readerSharedMemory, INDEX_READER_OFFSET, offset, offset + 1);
-            if (suc) return offset; // false 时说明offset被其他线程获取到
-        }
-    }
-
-    public JSharedMemSegment getReadableSegment() {
-        while (true) {
-            long offset = getAndIncreaseOffset(); // cas 拉取到offset
-            if (offset < 0) return null; // 如果消费队列已空，则返回 null
-            JSharedMemCarriage readCarriage = getReadCarriage(offset);
-            if (readCarriage.exist()) {
-                JSharedMemSegment segment = readCarriage.getSegment(offset);
-                if (!segment.isReadable()) { // 如果状态不是可读，则返回 null
-                    return null;
-                }
-                return segment;
-            }
-        }
-    }
-
-    /**
-     * 出队操作 - 读取数据（支持超时等待）
-     * 查找当前位置，按顺序读取, 没有数据则等待
-     *
-     * @return 读取到的数据，如果队列为空或超时返回null
-     */
-    public byte[] dequeue() {
-        // getSegment 做 offset increase 时已经保证了 offset 的唯一性
-        JSharedMemSegment segment = getReadableSegment();
-        if (segment == null) { // 如果队列已空，则返回null
-            return null;
-        } // 如果有数据，则尝试修改状态为正在读取
-        return segment.readContent();
     }
 
     public Path getReaderPath() {
@@ -151,14 +152,24 @@ public class JSharedMemReader implements AutoCloseable {
         return this;
     }
 
+    public void setTimeToLive(long timeAlive, TimeUnit timeUnit) {
+        this.timeToLive = new TimeToLive(timeAlive, timeUnit);
+    }
+
     @Override
     public void close() {
         try {
             System.out.println("【Reader】 执行销毁");
             this.threadLocalReadCarriage.remove();
-            this.readerSharedMemory.force();
-            this.accessFile.close();
-            this.channel.close();
+            if (this.readerSharedMemory != null) {
+                this.readerSharedMemory.force();
+            }
+            if (this.accessFile != null) {
+                this.accessFile.close();
+            }
+            if (this.channel != null) {
+                this.channel.close();
+            }
             if (this.needClean) {
                 JCleaner.clean(this.readerSharedMemory);
                 boolean remove = this.readerFile.delete();

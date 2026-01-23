@@ -20,9 +20,6 @@ public class JSharedMemCarriage implements AutoCloseable {
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final File carriageFile;
-    private RandomAccessFile accessFile;
-    private FileChannel channel;
-    private MappedByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
     private final TimeToLive timeToLive;
     // 当前车厢索引
     private final long currentCarriageIndex;
@@ -34,6 +31,10 @@ public class JSharedMemCarriage implements AutoCloseable {
     private final int sgmSize;
     private boolean exist = true;
 
+    private RandomAccessFile accessFile;
+    private FileChannel channel;
+    private MappedByteBuffer sharedMemory; // 整个共享内存，存储JSharedMemSegment
+
     /**
      * 数据元大小开始位置
      */
@@ -41,14 +42,14 @@ public class JSharedMemCarriage implements AutoCloseable {
 
     public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive, FileChannel.MapMode mode) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
-        this.capacity = jSharedMemBaseInfo.getCarriage();
-        this.msgSize = jSharedMemBaseInfo.getMsgMaxSize();
+        this.capacity = jSharedMemBaseInfo.readCarriage();
+        this.msgSize = jSharedMemBaseInfo.readMsgMaxSize();
         this.sgmSize = this.msgSize + JSharedMemSegment.CONTENT_OFFSET;
         // 链接当前共享内存
         this.currentCarriageIndex = offset / capacity;
         Path carriagePath = getCarriagePath(this.currentCarriageIndex);
         this.carriageFile = carriagePath.toFile();
-        this.timeToLive = timeToLive;
+        this.timeToLive = timeToLive == null ? JSharedMemQueue.DEF_TTL : timeToLive;
         System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
         mmap(mode);
     }

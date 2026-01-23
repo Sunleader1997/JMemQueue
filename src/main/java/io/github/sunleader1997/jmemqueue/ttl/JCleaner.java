@@ -12,6 +12,7 @@ public class JCleaner {
      */
     public static void clean(MappedByteBuffer buffer){
         try{
+            if(buffer == null) return;
             Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
             unsafeField.setAccessible(true);
             Unsafe unsafe = (Unsafe) unsafeField.get(null);
