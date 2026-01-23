@@ -79,8 +79,10 @@ public class JSharedMemReader implements AutoCloseable {
                 return null;
             } // 如果有数据，则尝试修改状态为正在读取
             return segment.readContent();
+        } else {
+            this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_ONLY);
+            return null;
         }
-        return null;
     }
 
     public JSharedMemSegment getReadableSegment() {
@@ -147,9 +149,8 @@ public class JSharedMemReader implements AutoCloseable {
         return Dictionary.getTopicDir(jSharedMemBaseInfo.getTopic()).resolve(group + ".reader");
     }
 
-    public JSharedMemReader needClean() {
+    public void needClean() {
         this.needClean = true;
-        return this;
     }
 
     public void setTimeToLive(long timeAlive, TimeUnit timeUnit) {
