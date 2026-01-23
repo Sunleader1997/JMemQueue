@@ -22,6 +22,7 @@ public class JSharedMemProducer implements AutoCloseable {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, msgMaxSize, capacity, overwrite); // 基础信息
         this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_WRITE); // 读写模式
         this.jSharedMemBaseInfo.flush(); // 写入磁盘
+        this.jSharedMemBaseInfo.print();
     }
 
     /**

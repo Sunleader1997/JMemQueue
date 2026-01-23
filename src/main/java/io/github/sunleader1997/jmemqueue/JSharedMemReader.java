@@ -46,6 +46,7 @@ public class JSharedMemReader implements AutoCloseable {
     public JSharedMemReader(String topic, String group) {
         this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, 0, 0, false); // 基础信息
         this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_ONLY); // 读模式
+        this.jSharedMemBaseInfo.print();
         this.group = group;
         Path carriagePath = getReaderPath();
         this.readerFile = carriagePath.toFile();
@@ -156,6 +157,11 @@ public class JSharedMemReader implements AutoCloseable {
     public void setTimeToLive(long timeAlive, TimeUnit timeUnit) {
         this.timeToLive = new TimeToLive(timeAlive, timeUnit);
     }
+
+    public void print(){
+        this.jSharedMemBaseInfo.print();
+    }
+
 
     @Override
     public void close() {

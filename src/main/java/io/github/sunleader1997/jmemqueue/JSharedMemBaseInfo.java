@@ -19,6 +19,7 @@ public class JSharedMemBaseInfo implements AutoCloseable {
     private final int msgMaxSize;
     private final int carriage;
     private final File file;
+    private FileChannel.MapMode mapMode;
 
     // 偏移量的索引开始位置 long 数据，占8位
     private static final int INDEX_TOTAL_OFFSET = 0;
@@ -51,6 +52,7 @@ public class JSharedMemBaseInfo implements AutoCloseable {
      */
     public void mmap(FileChannel.MapMode mode) {
         try {
+            this.mapMode = mode;
             this.accessFile = new RandomAccessFile(file, FileChannel.MapMode.READ_WRITE.equals(mode) ? "rw" : "r");
             this.channel = accessFile.getChannel();
             this.sharedBaseMemory = this.channel.map(mode, 0, BASE_SIZE);
@@ -58,6 +60,19 @@ public class JSharedMemBaseInfo implements AutoCloseable {
         } catch (IOException e) {
             System.out.println("数据挂载失败");
             this.mapped = false;
+        }
+    }
+
+    public void print() {
+        // 打印基础信息
+        if (mapped) {
+            System.out.println("\n========== 队列基础信息 ==========");
+            System.out.println("状态: " + this.mapMode);
+            System.out.println("TOPIC: " + this.topic);
+            System.out.println("当前OFFSET: " + this.readTotalOffset());
+            System.out.println("单车厢容量: " + this.readCarriage());
+            System.out.println("数据元容量: " + this.readMsgMaxSize() + "B");
+            System.out.println("===================================");
         }
     }
 
@@ -120,6 +135,7 @@ public class JSharedMemBaseInfo implements AutoCloseable {
             System.out.println("【BaseInfo】 执行销毁");
             this.accessFile.close();
             this.channel.close();
+            this.print();
         } catch (IOException e) {
             e.printStackTrace();
         }
