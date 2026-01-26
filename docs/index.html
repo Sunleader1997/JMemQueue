@@ -1,1219 +1,354 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JMemQueue - 高性能跨进程共享内存队列系统</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-            color: #e0e0e0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        /* Header */
-        header {
-            text-align: center;
-            padding: 40px 20px;
-            background: radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
-        }
-
-        .logo {
-            width: 100px;
-            height: 100px;
-            margin-bottom: 15px;
-            animation: pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.9; }
-        }
-
-        h1 {
-            font-size: 3em;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 10px;
-            text-shadow: 0 0 40px rgba(102, 126, 234, 0.3);
-        }
-
-        .subtitle {
-            font-size: 1.3em;
-            color: #a0a0a0;
-            margin-bottom: 8px;
-        }
-
-        .tagline {
-            font-size: 1em;
-            color: #6366f1;
-        }
-
-        /* Features Grid */
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            margin-bottom: 40px;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);
-            border-color: rgba(102, 126, 234, 0.5);
-        }
-
-        .feature-icon {
-            font-size: 1.8em;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .feature-title {
-            font-size: 1.1em;
-            margin-bottom: 8px;
-            color: #e0e0e0;
-        }
-
-        .feature-desc {
-            color: #888;
-            line-height: 1.5;
-            font-size: 0.95em;
-        }
-
-        /* Animation Section */
-        .animation-section {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 1.8em;
-            margin-bottom: 8px;
-            color: #e0e0e0;
-        }
-
-        .section-desc {
-            text-align: center;
-            color: #888;
-            margin-bottom: 25px;
-            font-size: 0.95em;
-        }
-
-        #animationCanvas {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            display: block;
-            margin: 0 auto;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .control-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 25px;
-            font-size: 0.95em;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-        }
-
-        .control-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .control-btn:active {
-            transform: translateY(0);
-        }
-
-        .stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .stat-label {
-            color: #888;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
-
-        /* Architecture Section */
-        .architecture {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }
-
-        .arch-diagram {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 25px;
-        }
-
-        .arch-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 18px;
-            transition: all 0.3s ease;
-        }
-
-        .arch-card:hover {
-            border-color: rgba(102, 126, 234, 0.5);
-        }
-
-        .arch-title {
-            color: #6366f1;
-            margin-bottom: 8px;
-            font-size: 1em;
-        }
-
-        .arch-desc {
-            color: #888;
-            line-height: 1.5;
-            font-size: 0.9em;
-        }
-
-        /* Performance Section */
-        .performance {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }
-
-        .perf-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 25px;
-        }
-
-        .perf-item {
-            text-align: center;
-            padding: 25px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .perf-item:hover {
-            transform: scale(1.03);
-            border-color: rgba(102, 126, 234, 0.5);
-        }
-
-        .perf-value {
-            font-size: 2.2em;
-            font-weight: bold;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .perf-label {
-            color: #888;
-            margin-top: 8px;
-            font-size: 0.95em;
-        }
-
-        .perf-note {
-            color: #666;
-            font-size: 0.85em;
-            margin-top: 5px;
-        }
-
-        /* Quick Start */
-        .quick-start {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }
-
-        .code-block {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
-            overflow-x: auto;
-        }
-
-        .code-block pre {
-            color: #d4d4d4;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9em;
-            line-height: 1.5;
-        }
-
-        .keyword { color: #569cd6; }
-        .string { color: #ce9178; }
-        .comment { color: #6a9955; }
-        .class-name { color: #4ec9b0; }
-        .method { color: #dcdcaa; }
-        .number { color: #b5cea8; }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        footer a {
-            color: #6366f1;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        footer a:hover {
-            color: #764ba2;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            h1 { font-size: 2em; }
-            .subtitle { font-size: 1em; }
-            #animationCanvas { width: 100%; height: auto; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header>
-            <svg class="logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-                        <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-                    </linearGradient>
-                </defs>
-                <rect x="20" y="20" width="160" height="160" rx="30" fill="url(#grad1)" opacity="0.1"/>
-                <rect x="30" y="30" width="140" height="140" rx="20" fill="url(#grad1)" opacity="0.2"/>
-                <rect x="40" y="40" width="120" height="120" rx="15" fill="url(#grad1)" opacity="0.3"/>
-                <text x="100" y="115" text-anchor="middle" font-size="40" font-weight="bold" fill="url(#grad1)">SMQ</text>
-            </svg>
-            <h1>JMemQueue</h1>
-            <div class="subtitle">高性能跨进程共享内存队列系统</div>
-            <div class="tagline">基于 Java NIO 和内存映射文件的零拷贝通信解决方案</div>
-        </header>
-
-        <!-- Features -->
-        <section class="features">
-            <div class="feature-card">
-                <div class="feature-icon">⚡</div>
-                <div class="feature-title">零拷贝机制</div>
-                <div class="feature-desc">基于内存映射文件，避免不必要的内存复制，实现极致低延迟</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔓</div>
-                <div class="feature-title">无锁并发</div>
-                <div class="feature-desc">使用 CAS 原子操作确保线程安全，线程A拿到offset时线程B不必等待</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <div class="feature-title">高吞吐量</div>
-                <div class="feature-desc">单线程每秒可处理数百万条消息，多线程消费可达千万级别</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔄</div>
-                <div class="feature-title">负载均衡</div>
-                <div class="feature-desc">同一个 GROUP 的消费者不会消费到重复数据，支持多进程多服务</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">💾</div>
-                <div class="feature-title">持久化存储</div>
-                <div class="feature-desc">数据存储在操作系统页面缓存中，支持断电不丢失</div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📈</div>
-                <div class="feature-title">可扩展架构</div>
-                <div class="feature-desc">支持动态车厢扩容，可配置数据元大小，支持 TB 级数据存储</div>
-            </div>
-        </section>
-
-        <!-- Animation Section -->
-        <section class="animation-section">
-            <h2 class="section-title">SGM 多线程数据存取流程演示</h2>
-            <p class="section-desc">真实模拟：Producer CAS 获取 offset → mmap 车厢 → 写入 SGM → Consumer 并发读取（固定两个车厢）</p>
-            <canvas id="animationCanvas" width="1000" height="450"></canvas>
-            <div class="controls">
-                <button class="control-btn" onclick="startAnimation()">▶ 开始演示</button>
-                <button class="control-btn" onclick="pauseAnimation()">⏸ 暂停</button>
-                <button class="control-btn" onclick="resetAnimation()">↺ 重置</button>
-            </div>
-            <div class="stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="statOffset">0</div>
-                    <div class="stat-label">全局 Offset</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="statProduced">0</div>
-                    <div class="stat-label">生产消息数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="statConsumed">0</div>
-                    <div class="stat-label">消费消息数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="statCarriages">1</div>
-                    <div class="stat-label">车厢数量</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Architecture -->
-        <section class="architecture">
-            <h2 class="section-title">核心架构设计</h2>
-            <p class="section-desc">JMemQueue 采用分层架构设计，各组件职责清晰</p>
-
-            <div class="arch-diagram">
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemQueue</div>
-                    <div class="arch-desc">主队列接口，提供 enqueue() 和 createReader() 方法</div>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemBaseInfo</div>
-                    <div class="arch-desc">维护全局 offset，提供 CAS 原子操作获取并递增 offset</div>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemCarriage</div>
-                    <div class="arch-desc">逻辑车厢，管理多个 SGM，ThreadLocal 维护避免竞态</div>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemSegment</div>
-                    <div class="arch-desc">单个内存段，每个 SGM 固定大小，包含状态、大小、内容</div>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemProducer</div>
-                    <div class="arch-desc">生产者，ThreadLocal 维护车厢，CAS 获取 offset 顺序写入</div>
-                </div>
-                <div class="arch-card">
-                    <div class="arch-title">JSharedMemReader</div>
-                    <div class="arch-desc">消费者，每个 GROUP 独立 offset，并发读取可读数据</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Performance -->
-        <section class="performance">
-            <h2 class="section-title">性能基准</h2>
-            <p class="section-desc">在典型硬件环境下（Intel i7, 16GB RAM）的测试数据</p>
-
-            <div class="perf-grid">
-                <div class="perf-item">
-                    <div class="perf-value">200万+</div>
-                    <div class="perf-label">Windows 单线程</div>
-                    <div class="perf-note">条消息/秒</div>
-                </div>
-                <div class="perf-item">
-                    <div class="perf-value">600万+</div>
-                    <div class="perf-label">Windows 4线程</div>
-                    <div class="perf-note">多进程消费</div>
-                </div>
-                <div class="perf-item">
-                    <div class="perf-value">1800万+</div>
-                    <div class="perf-label">Linux 4线程</div>
-                    <div class="perf-note">多进程消费</div>
-                </div>
-                <div class="perf-item">
-                    <div class="perf-value">&lt;1μs</div>
-                    <div class="perf-label">平均延迟</div>
-                    <div class="perf-note">微秒级响应</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Quick Start -->
-        <section class="quick-start">
-            <h2 class="section-title">快速开始</h2>
-
-            <div style="margin-top: 25px;">
-                <h3 style="color: #e0e0e0; margin-bottom: 12px;">生产者示例</h3>
-                <div class="code-block">
-                    <pre>
-// 创建共享内存队列
-JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
-JSharedMemProducer producer = queue.createProducer();
-// 如果需要定义数据清理机制
-// producer.setTimeToLive(1, TimeUnit.DAYS);
-
-// 写入数据
-String message = "Hello, Shared Memory Queue!";
-byte[] data = message.getBytes(StandardCharsets.UTF_8);
-boolean success = producer.enqueue(data);
-                    </pre>
-                </div>
-            </div>
-
-            <div style="margin-top: 25px;">
-                <h3 style="color: #e0e0e0; margin-bottom: 12px;">消费者示例</h3>
-                <div class="code-block">
-                    <pre>
-import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
-import io.github.sunleader1997.jmemqueue.JSharedMemReader;
-
-// 创建队列实例
-JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
-
-// 创建读取器
-JSharedMemReader reader = queue.createReader();
-
-// 消费消息
-byte[] data = reader.dequeue();
-if(data !=null){
-    String message = new String(data, StandardCharsets.UTF_8);
-    System.out.println("收到消息: "+message);
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Trae Project</title>
+    <script type="module" crossorigin src="/assets/index-DBFHaQJG.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BGvPZbiP.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  
+          <script>
+            (function() {
+              'use strict';
+              
+              if (window.TraeBadgePlugin) return;
+              
+              const css = `
+.trae-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-sizing: border-box;
+  border-radius: 6px;
+  position: fixed;
+  padding: 8px 8px 8px 10px;
+  height: 28px;
+  width: 130px;
+  z-index: 9999;
 }
-                    </pre>
-                </div>
-            </div>
-        </section>
 
-        <!-- Footer -->
-        <footer>
-            <p>JMemQueue - Apache License 2.0</p>
-            <p style="margin-top: 8px;">
-                <a href="https://github.com/sunleader1997/JMemQueue" target="_blank">GitHub</a> |
-                <a href="https://github.com/sunleader1997/JMemQueue/issues" target="_blank">Issues</a>
-            </p>
-        </footer>
-    </div>
+.trae-badge:hover.trae-badge--light {
+  background-color: #EDEFF2;
+}
 
-    <script>
-        // Canvas Animation
-        const canvas = document.getElementById('animationCanvas');
-        const ctx = canvas.getContext('2d');
+.trae-badge:hover.trae-badge--dark {
+  background-color: #2A2D31;
+}
 
-        let animationId;
-        let isRunning = false;
-        let startTime;
+.trae-badge-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
 
-        // Colors
-        const colors = {
-            bg: '#0a0a0a',
-            baseInfo: '#667eea',
-            producer: '#4ec9b0',
-            consumer: '#ff6b6b',
-            carriage: '#2a2a3e',
-            sgmIdle: '#3a3a4e',
-            sgmWriting: '#ffa500',
-            sgmReadable: '#00ff88',
-            sgmReading: '#ff6b6b',
-            text: '#e0e0e0',
-            grid: 'rgba(255, 255, 255, 0.05)'
-        };
+.trae-badge-logo {
+  flex-shrink: 0;
+}
 
-        // Global state
-        let globalOffset = 0;
-        const CARRIAGE_CAPACITY = 8; // 每个车厢的 SGM 数量
-        const SGM_SIZE = 60; // SGM 块大小
-        const MAX_CARRIAGES = 2; // 只展示两个车厢
+.trae-badge-share {
+  flex-shrink: 0;
+  color: rgba(78, 82, 87, 1);
+}
 
-        // BaseInfo
-        const baseInfo = {
-            x: 500,
-            y: 40,
-            width: 180,
-            height: 50
-        };
+.trae-badge:hover.trae-badge--light .trae-badge-share {
+  color: rgba(38, 41, 44, 1);
+}
 
-        // Disk area (for mmap demo)
-        const diskArea = {
-            x: 500,
-            y: 430,
-            width: 200,
-            height: 60
-        };
+.trae-badge:hover.trae-badge--dark .trae-badge-share {
+  color: #D1D3DB;
+}
 
-        // Producers
-        const producers = [];
-        const NUM_PRODUCERS = 3;
+.trae-badge-cancel {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+}
 
-        // Consumers
-        const consumers = [];
-        const NUM_CONSUMERS = 2;
+.trae-badge:hover .trae-badge-cancel {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
 
-        // Carriages (固定两个车厢)
-        let carriages = [];
+/* 在移动端设备上始终显示取消按钮 */
+@media (hover: none) and (pointer: coarse) {
+  .trae-badge-cancel {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
 
-        // Particles (动画效果)
-        const particles = [];
+.trae-badge--light {
+  background-color: rgba(255, 255, 255, 1);
+  color: #ffffff;
+  box-shadow: 0px 0px 0.5px 0px rgba(0, 0, 0, 0.12), 0px 1px 3px 0px rgba(0, 0, 0, 0.08), 0px 4px 8px 0px rgba(0, 0, 0, 0.12);
+}
 
-        // Stats
-        let producedCount = 0;
-        let consumedCount = 0;
+.trae-badge--dark {
+  background-color: #000000;
+  color: #ffffff;
+  box-shadow: 0px 0px 0.5px 0px rgba(0, 0, 0, 0.12), 0px 1px 3px 0px rgba(0, 0, 0, 0.08), 0px 4px 8px 0px rgba(0, 0, 0, 0.12);
+}
 
-        class Producer {
-            constructor(x, y, id) {
-                this.x = x;
-                this.y = y;
-                this.id = id;
-                this.width = 90;
-                this.height = 70;
-                this.lastProduceTime = 0;
-                this.produceInterval = 2500 + Math.random() * 1500;
-                this.currentOffset = -1;
-                this.waiting = false;
-                this.active = false;
+.trae-badge--bottom-right { bottom: 20px; right: 20px; }
+.trae-badge--bottom-left { bottom: 20px; left: 20px; }
+.trae-badge--top-right { top: 20px; right: 20px; }
+.trae-badge--top-left { top: 20px; left: 20px; }
+`;
+              const logos = {"light":"<svg width=\"92\" height=\"12\" viewBox=\"0 0 92 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g clip-path=\"url(#clip0_5805_55291)\">\n<g clip-path=\"url(#clip1_5805_55291)\">\n<path d=\"M15.1579 11.2121H2.6478V9.12821H0.562988V0.787872H15.1579V11.2121ZM2.6478 9.12821H13.073V2.87269H2.6478V9.12821ZM7.86092 5.96865L6.38672 7.44275L4.91261 5.96865L6.38672 4.49445L7.86092 5.96865ZM12.0306 5.96775L10.5564 7.44185L9.08233 5.96775L10.5564 4.49355L12.0306 5.96775Z\" fill=\"white\"/>\n</g>\n<g clip-path=\"url(#clip2_5805_55291)\">\n<path d=\"M28.0793 3.37087H25.142V10.6863H23.143V3.37087H20.2048V1.5047H28.0793V3.37087ZM55.4369 3.36808H50.3789V8.81641H55.4369V10.6835H48.3789V1.50092H55.4369V3.36808ZM34.1761 1.50092C36.4528 1.50092 37.1355 2.26109 37.1355 4.43355C37.1355 6.00363 36.6872 6.72417 35.4243 7.14483L37.1466 10.6817H34.9474L33.3569 7.38095H31.2204L31.2222 10.6817V10.6826H29.2583V1.50092H34.1761ZM47.4897 10.6826H45.3993L44.5662 8.50363H40.8449L40.0819 10.6826H37.9048L41.4232 1.5047H44.081L47.4897 10.6826ZM55.436 6.119L53.8697 7.59311L52.3955 6.119L53.8697 4.6448L55.436 6.119ZM41.4547 6.86439H44.0173L42.8578 3.54429H42.5985L41.4547 6.86439ZM31.2222 5.60883H33.8948V5.60793C34.5636 5.60793 35.07 5.38284 35.0701 4.79156V4.14581C35.0701 3.55449 34.5636 3.32934 33.8948 3.32934H31.2222V5.60883Z\" fill=\"white\"/>\n</g>\n</g>\n<path d=\"M65.0407 4.17188C65.0009 3.79972 64.8333 3.50994 64.5379 3.30256C64.2453 3.09517 63.8646 2.99148 63.3958 2.99148C63.0663 2.99148 62.7836 3.04119 62.5478 3.14062C62.312 3.24006 62.1316 3.375 62.0066 3.54545C61.8816 3.71591 61.8177 3.91051 61.8149 4.12926C61.8149 4.31108 61.856 4.46875 61.9384 4.60227C62.0237 4.7358 62.1387 4.84943 62.2836 4.94318C62.4285 5.03409 62.589 5.1108 62.7651 5.1733C62.9413 5.2358 63.1188 5.28835 63.2978 5.33097L64.116 5.53551C64.4455 5.61222 64.7623 5.71591 65.0663 5.84659C65.3731 5.97727 65.6472 6.14205 65.8887 6.34091C66.133 6.53977 66.3262 6.77983 66.4683 7.06108C66.6103 7.34233 66.6813 7.67187 66.6813 8.04972C66.6813 8.56108 66.5506 9.01136 66.2893 9.40057C66.0279 9.78693 65.6501 10.0895 65.1558 10.3082C64.6643 10.5241 64.0691 10.6321 63.3703 10.6321C62.6913 10.6321 62.1018 10.527 61.6018 10.3168C61.1046 10.1065 60.7154 9.79972 60.4342 9.39631C60.1558 8.9929 60.0052 8.50142 59.9825 7.92188H61.5379C61.5606 8.22585 61.6543 8.47869 61.8191 8.6804C61.9839 8.8821 62.1984 9.03267 62.4626 9.1321C62.7296 9.23153 63.0279 9.28125 63.3575 9.28125C63.7012 9.28125 64.0024 9.23011 64.2609 9.12784C64.5222 9.02273 64.7268 8.87784 64.8745 8.69318C65.0222 8.50568 65.0975 8.28693 65.1004 8.03693C65.0975 7.80966 65.0308 7.62216 64.9001 7.47443C64.7694 7.32386 64.5862 7.19886 64.3504 7.09943C64.1174 6.99716 63.8447 6.90625 63.5322 6.8267L62.5393 6.57102C61.8205 6.38636 61.2524 6.10653 60.8347 5.73153C60.42 5.35369 60.2126 4.85227 60.2126 4.22727C60.2126 3.71307 60.3518 3.26278 60.6302 2.87642C60.9114 2.49006 61.2935 2.19034 61.7765 1.97727C62.2595 1.76136 62.8063 1.65341 63.4171 1.65341C64.0364 1.65341 64.5791 1.76136 65.045 1.97727C65.5137 2.19034 65.8816 2.48722 66.1487 2.8679C66.4157 3.24574 66.5535 3.6804 66.562 4.17188H65.0407ZM75.8891 6.13636C75.8891 7.0767 75.7129 7.8821 75.3607 8.55256C75.0112 9.22017 74.534 9.73153 73.9288 10.0866C73.3266 10.4418 72.6433 10.6193 71.8791 10.6193C71.1149 10.6193 70.4303 10.4418 69.8252 10.0866C69.2229 9.72869 68.7456 9.21591 68.3933 8.5483C68.0439 7.87784 67.8692 7.07386 67.8692 6.13636C67.8692 5.19602 68.0439 4.39205 68.3933 3.72443C68.7456 3.05398 69.2229 2.54119 69.8252 2.18608C70.4303 1.83097 71.1149 1.65341 71.8791 1.65341C72.6433 1.65341 73.3266 1.83097 73.9288 2.18608C74.534 2.54119 75.0112 3.05398 75.3607 3.72443C75.7129 4.39205 75.8891 5.19602 75.8891 6.13636ZM74.2996 6.13636C74.2996 5.47443 74.1959 4.91619 73.9885 4.46165C73.784 4.00426 73.4999 3.65909 73.1362 3.42614C72.7726 3.19034 72.3536 3.07244 71.8791 3.07244C71.4047 3.07244 70.9857 3.19034 70.622 3.42614C70.2584 3.65909 69.9729 4.00426 69.7655 4.46165C69.5609 4.91619 69.4587 5.47443 69.4587 6.13636C69.4587 6.7983 69.5609 7.35795 69.7655 7.81534C69.9729 8.26989 70.2584 8.61506 70.622 8.85085C70.9857 9.08381 71.4047 9.20028 71.8791 9.20028C72.3536 9.20028 72.7726 9.08381 73.1362 8.85085C73.4999 8.61506 73.784 8.26989 73.9885 7.81534C74.1959 7.35795 74.2996 6.7983 74.2996 6.13636ZM77.3837 10.5V1.77273H78.9647V9.17472H82.8085V10.5H77.3837ZM91.6391 6.13636C91.6391 7.0767 91.4629 7.8821 91.1107 8.55256C90.7612 9.22017 90.284 9.73153 89.6788 10.0866C89.0766 10.4418 88.3933 10.6193 87.6291 10.6193C86.8649 10.6193 86.1803 10.4418 85.5752 10.0866C84.9729 9.72869 84.4956 9.21591 84.1433 8.5483C83.7939 7.87784 83.6192 7.07386 83.6192 6.13636C83.6192 5.19602 83.7939 4.39205 84.1433 3.72443C84.4956 3.05398 84.9729 2.54119 85.5752 2.18608C86.1803 1.83097 86.8649 1.65341 87.6291 1.65341C88.3933 1.65341 89.0766 1.83097 89.6788 2.18608C90.284 2.54119 90.7612 3.05398 91.1107 3.72443C91.4629 4.39205 91.6391 5.19602 91.6391 6.13636ZM90.0496 6.13636C90.0496 5.47443 89.9459 4.91619 89.7385 4.46165C89.534 4.00426 89.2499 3.65909 88.8862 3.42614C88.5226 3.19034 88.1036 3.07244 87.6291 3.07244C87.1547 3.07244 86.7357 3.19034 86.372 3.42614C86.0084 3.65909 85.7229 4.00426 85.5155 4.46165C85.3109 4.91619 85.2087 5.47443 85.2087 6.13636C85.2087 6.7983 85.3109 7.35795 85.5155 7.81534C85.7229 8.26989 86.0084 8.61506 86.372 8.85085C86.7357 9.08381 87.1547 9.20028 87.6291 9.20028C88.1036 9.20028 88.5226 9.08381 88.8862 8.85085C89.2499 8.61506 89.534 8.26989 89.7385 7.81534C89.9459 7.35795 90.0496 6.7983 90.0496 6.13636Z\" fill=\"#32F08C\"/>\n<defs>\n<clipPath id=\"clip0_5805_55291\">\n<rect width=\"54.874\" height=\"10.4242\" fill=\"white\" transform=\"translate(0.562988 0.787872)\"/>\n</clipPath>\n<clipPath id=\"clip1_5805_55291\">\n<rect width=\"14.5949\" height=\"10.4242\" fill=\"white\" transform=\"translate(0.562988 0.787872)\"/>\n</clipPath>\n<clipPath id=\"clip2_5805_55291\">\n<rect width=\"35.2321\" height=\"9.18536\" fill=\"white\" transform=\"translate(20.2048 1.50092)\"/>\n</clipPath>\n</defs>\n</svg>","dark":"<svg width=\"92\" height=\"12\" viewBox=\"0 0 92 12\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g clip-path=\"url(#clip0_5805_55291)\">\n<g clip-path=\"url(#clip1_5805_55291)\">\n<path d=\"M15.1579 11.2121H2.6478V9.12821H0.562988V0.787872H15.1579V11.2121ZM2.6478 9.12821H13.073V2.87269H2.6478V9.12821ZM7.86092 5.96865L6.38672 7.44275L4.91261 5.96865L6.38672 4.49445L7.86092 5.96865ZM12.0306 5.96775L10.5564 7.44185L9.08233 5.96775L10.5564 4.49355L12.0306 5.96775Z\" fill=\"black\"/>\n</g>\n<g clip-path=\"url(#clip2_5805_55291)\">\n<path d=\"M28.0793 3.37088H25.142V10.6863H23.143V3.37088H20.2048V1.50471H28.0793V3.37088ZM55.4369 3.36808H50.3789V8.81642H55.4369V10.6835H48.3789V1.50092H55.4369V3.36808ZM34.1761 1.50092C36.4528 1.50092 37.1355 2.2611 37.1355 4.43355C37.1355 6.00364 36.6872 6.72418 35.4243 7.14484L37.1466 10.6817H34.9474L33.3569 7.38096H31.2204L31.2222 10.6817V10.6826H29.2583V1.50092H34.1761ZM47.4897 10.6826H45.3993L44.5662 8.50363H40.8449L40.0819 10.6826H37.9048L41.4232 1.50471H44.081L47.4897 10.6826ZM55.436 6.11901L53.8697 7.59312L52.3955 6.11901L53.8697 4.64481L55.436 6.11901ZM41.4547 6.8644H44.0173L42.8578 3.5443H42.5985L41.4547 6.8644ZM31.2222 5.60884H33.8948V5.60794C34.5636 5.60793 35.07 5.38285 35.0701 4.79156V4.14581C35.0701 3.5545 34.5636 3.32935 33.8948 3.32935H31.2222V5.60884Z\" fill=\"black\"/>\n</g>\n</g>\n<path d=\"M65.0407 4.17188C65.0009 3.79972 64.8333 3.50994 64.5379 3.30256C64.2453 3.09517 63.8646 2.99148 63.3958 2.99148C63.0663 2.99148 62.7836 3.04119 62.5478 3.14062C62.312 3.24006 62.1316 3.375 62.0066 3.54545C61.8816 3.71591 61.8177 3.91051 61.8149 4.12926C61.8149 4.31108 61.856 4.46875 61.9384 4.60227C62.0237 4.7358 62.1387 4.84943 62.2836 4.94318C62.4285 5.03409 62.589 5.1108 62.7651 5.1733C62.9413 5.2358 63.1188 5.28835 63.2978 5.33097L64.116 5.53551C64.4455 5.61222 64.7623 5.71591 65.0663 5.84659C65.3731 5.97727 65.6472 6.14205 65.8887 6.34091C66.133 6.53977 66.3262 6.77983 66.4683 7.06108C66.6103 7.34233 66.6813 7.67187 66.6813 8.04972C66.6813 8.56108 66.5506 9.01136 66.2893 9.40057C66.0279 9.78693 65.6501 10.0895 65.1558 10.3082C64.6643 10.5241 64.0691 10.6321 63.3703 10.6321C62.6913 10.6321 62.1018 10.527 61.6018 10.3168C61.1046 10.1065 60.7154 9.79972 60.4342 9.39631C60.1558 8.9929 60.0052 8.50142 59.9825 7.92188H61.5379C61.5606 8.22585 61.6543 8.47869 61.8191 8.6804C61.9839 8.8821 62.1984 9.03267 62.4626 9.1321C62.7296 9.23153 63.0279 9.28125 63.3575 9.28125C63.7012 9.28125 64.0024 9.23011 64.2609 9.12784C64.5222 9.02273 64.7268 8.87784 64.8745 8.69318C65.0222 8.50568 65.0975 8.28693 65.1004 8.03693C65.0975 7.80966 65.0308 7.62216 64.9001 7.47443C64.7694 7.32386 64.5862 7.19886 64.3504 7.09943C64.1174 6.99716 63.8447 6.90625 63.5322 6.8267L62.5393 6.57102C61.8205 6.38636 61.2524 6.10653 60.8347 5.73153C60.42 5.35369 60.2126 4.85227 60.2126 4.22727C60.2126 3.71307 60.3518 3.26278 60.6302 2.87642C60.9114 2.49006 61.2935 2.19034 61.7765 1.97727C62.2595 1.76136 62.8063 1.65341 63.4171 1.65341C64.0364 1.65341 64.5791 1.76136 65.045 1.97727C65.5137 2.19034 65.8816 2.48722 66.1487 2.8679C66.4157 3.24574 66.5535 3.6804 66.562 4.17188H65.0407ZM75.8891 6.13636C75.8891 7.0767 75.7129 7.8821 75.3607 8.55256C75.0112 9.22017 74.534 9.73153 73.9288 10.0866C73.3266 10.4418 72.6433 10.6193 71.8791 10.6193C71.1149 10.6193 70.4303 10.4418 69.8252 10.0866C69.2229 9.72869 68.7456 9.21591 68.3933 8.5483C68.0439 7.87784 67.8692 7.07386 67.8692 6.13636C67.8692 5.19602 68.0439 4.39205 68.3933 3.72443C68.7456 3.05398 69.2229 2.54119 69.8252 2.18608C70.4303 1.83097 71.1149 1.65341 71.8791 1.65341C72.6433 1.65341 73.3266 1.83097 73.9288 2.18608C74.534 2.54119 75.0112 3.05398 75.3607 3.72443C75.7129 4.39205 75.8891 5.19602 75.8891 6.13636ZM74.2996 6.13636C74.2996 5.47443 74.1959 4.91619 73.9885 4.46165C73.784 4.00426 73.4999 3.65909 73.1362 3.42614C72.7726 3.19034 72.3536 3.07244 71.8791 3.07244C71.4047 3.07244 70.9857 3.19034 70.622 3.42614C70.2584 3.65909 69.9729 4.00426 69.7655 4.46165C69.5609 4.91619 69.4587 5.47443 69.4587 6.13636C69.4587 6.7983 69.5609 7.35795 69.7655 7.81534C69.9729 8.26989 70.2584 8.61506 70.622 8.85085C70.9857 9.08381 71.4047 9.20028 71.8791 9.20028C72.3536 9.20028 72.7726 9.08381 73.1362 8.85085C73.4999 8.61506 73.784 8.26989 73.9885 7.81534C74.1959 7.35795 74.2996 6.7983 74.2996 6.13636ZM77.3837 10.5V1.77273H78.9647V9.17472H82.8085V10.5H77.3837ZM91.6391 6.13636C91.6391 7.0767 91.4629 7.8821 91.1107 8.55256C90.7612 9.22017 90.284 9.73153 89.6788 10.0866C89.0766 10.4418 88.3933 10.6193 87.6291 10.6193C86.8649 10.6193 86.1803 10.4418 85.5752 10.0866C84.9729 9.72869 84.4956 9.21591 84.1433 8.5483C83.7939 7.87784 83.6192 7.07386 83.6192 6.13636C83.6192 5.19602 83.7939 4.39205 84.1433 3.72443C84.4956 3.05398 84.9729 2.54119 85.5752 2.18608C86.1803 1.83097 86.8649 1.65341 87.6291 1.65341C88.3933 1.65341 89.0766 1.83097 89.6788 2.18608C90.284 2.54119 90.7612 3.05398 91.1107 3.72443C91.4629 4.39205 91.6391 5.19602 91.6391 6.13636ZM90.0496 6.13636C90.0496 5.47443 89.9459 4.91619 89.7385 4.46165C89.534 4.00426 89.2499 3.65909 88.8862 3.42614C88.5226 3.19034 88.1036 3.07244 87.6291 3.07244C87.1547 3.07244 86.7357 3.19034 86.372 3.42614C86.0084 3.65909 85.7229 4.00426 85.5155 4.46165C85.3109 4.91619 85.2087 5.47443 85.2087 6.13636C85.2087 6.7983 85.3109 7.35795 85.5155 7.81534C85.7229 8.26989 86.0084 8.61506 86.372 8.85085C86.7357 9.08381 87.1547 9.20028 87.6291 9.20028C88.1036 9.20028 88.5226 9.08381 88.8862 8.85085C89.2499 8.61506 89.534 8.26989 89.7385 7.81534C89.9459 7.35795 90.0496 6.7983 90.0496 6.13636Z\" fill=\"#0AB861\"/>\n<defs>\n<clipPath id=\"clip0_5805_55291\">\n<rect width=\"54.874\" height=\"10.4242\" fill=\"white\" transform=\"translate(0.562988 0.787872)\"/>\n</clipPath>\n<clipPath id=\"clip1_5805_55291\">\n<rect width=\"14.5949\" height=\"10.4242\" fill=\"white\" transform=\"translate(0.562988 0.787872)\"/>\n</clipPath>\n<clipPath id=\"clip2_5805_55291\">\n<rect width=\"35.2321\" height=\"9.18536\" fill=\"white\" transform=\"translate(20.2048 1.50092)\"/>\n</clipPath>\n</defs>\n</svg>"};
+              const cancelDark = `<svg width="16" height="15" viewBox="0 0 16 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_5993_243)">
+<path d="M0.437012 7.5C0.437012 3.35786 3.79488 0 7.93701 0C12.0791 0 15.437 3.35786 15.437 7.5C15.437 11.6421 12.0791 15 7.93701 15C3.79488 15 0.437012 11.6421 0.437012 7.5Z" fill="#EDEFF2"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M7.93698 1.34036C11.3391 1.34036 14.0966 4.09792 14.0966 7.5C14.0966 10.9021 11.3391 13.6596 7.93698 13.6596C4.53491 13.6596 1.77734 10.9021 1.77734 7.5C1.77734 4.09792 4.53491 1.34036 7.93698 1.34036Z" fill="#111214"/>
+<path d="M7.93717 6.70886L9.40826 5.23776L9.80383 4.84128L10.5959 5.63334L10.1994 6.02891L8.72831 7.5L10.1994 8.9711L10.5959 9.36667L9.80383 10.1587L9.40826 9.76224L7.93717 8.29115L6.46607 9.76224L6.0705 10.1587L5.27844 9.36667L5.67493 8.9711L7.14602 7.5L5.67493 6.02891L5.27844 5.63334L6.0705 4.84128L6.46607 5.23776L7.93717 6.70886Z" fill="white"/>
+</g>
+<defs>
+<clipPath id="clip0_5993_243">
+<path d="M0.437012 7.5C0.437012 3.35786 3.79488 0 7.93701 0C12.0791 0 15.437 3.35786 15.437 7.5C15.437 11.6421 12.0791 15 7.93701 15C3.79488 15 0.437012 11.6421 0.437012 7.5Z" fill="white"/>
+</clipPath>
+</defs>
+</svg>`;
+              const cancelLight = `<svg width="16" height="15" viewBox="0 0 16 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_5993_279)">
+<path d="M0.437012 7.5C0.437012 3.35786 3.79488 0 7.93701 0C12.0791 0 15.437 3.35786 15.437 7.5C15.437 11.6421 12.0791 15 7.93701 15C3.79488 15 0.437012 11.6421 0.437012 7.5Z" fill="#2A2D31"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M7.93698 1.34036C11.3391 1.34036 14.0966 4.09792 14.0966 7.5C14.0966 10.9021 11.3391 13.6596 7.93698 13.6596C4.53491 13.6596 1.77734 10.9021 1.77734 7.5C1.77734 4.09792 4.53491 1.34036 7.93698 1.34036Z" fill="white"/>
+<path d="M7.93717 6.70886L9.40826 5.23776L9.80383 4.84128L10.5959 5.63334L10.1994 6.02891L8.72831 7.5L10.1994 8.9711L10.5959 9.36667L9.80383 10.1587L9.40826 9.76224L7.93717 8.29115L6.46607 9.76224L6.0705 10.1587L5.27844 9.36667L5.67493 8.9711L7.14602 7.5L5.67493 6.02891L5.27844 5.63334L6.0705 4.84128L6.46607 5.23776L7.93717 6.70886Z" fill="black"/>
+</g>
+<defs>
+<clipPath id="clip0_5993_279">
+<path d="M0.437012 7.5C0.437012 3.35786 3.79488 0 7.93701 0C12.0791 0 15.437 3.35786 15.437 7.5C15.437 11.6421 12.0791 15 7.93701 15C3.79488 15 0.437012 11.6421 0.437012 7.5Z" fill="white"/>
+</clipPath>
+</defs>
+</svg>`;
+              const shareIcon = `<svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M5.68693 2.33333H2.77026V11.6667H12.1036V8.75M8.6036 2.33333H12.1036V5.83333M6.8536 7.58333L11.5203 2.91666" 
+        stroke="currentColor" stroke-width="1.05" stroke-linecap="square"/>
+</svg>`;
+              
+              
+          // 主题选择函数 (复用自 theme.ts)
+          function getLuminance(r, g, b) {
+            return 0.299 * r + 0.587 * g + 0.114 * b;
+          }
+          
+          function parseColor(color) {
+            const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+            if (rgbaMatch) {
+              return [parseInt(rgbaMatch[1]), parseInt(rgbaMatch[2]), parseInt(rgbaMatch[3])];
             }
-
-            draw() {
-                // Producer box
-                ctx.fillStyle = this.active ? 'rgba(78, 201, 176, 0.4)' : 'rgba(78, 201, 176, 0.15)';
-                ctx.strokeStyle = colors.producer;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height, 8);
-                ctx.fill();
-                ctx.stroke();
-
-                // Producer icon
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('P' + (this.id + 1), this.x, this.y + 6);
-
-                // State label
-                ctx.font = '10px Arial';
-                ctx.fillStyle = this.waiting ? '#ffa500' : '#888';
-                ctx.fillText(this.waiting ? 'CAS...' : 'Producer', this.x, this.y + this.height/2 + 12);
+            
+            const hexMatch = color.match(/^#([0-9a-f]{6})$/i);
+            if (hexMatch) {
+              const hex = hexMatch[1];
+              return [
+                parseInt(hex.substr(0, 2), 16),
+                parseInt(hex.substr(2, 2), 16),
+                parseInt(hex.substr(4, 2), 16)
+              ];
             }
-
-            update(currentTime) {
-                if (!this.waiting && !this.active && currentTime - this.lastProduceTime > this.produceInterval) {
-                    this.waiting = true;
-                    this.lastProduceTime = currentTime;
-
-                    // 尝试 CAS 获取 offset
+            
+            const hexShortMatch = color.match(/^#([0-9a-f]{3})$/i);
+            if (hexShortMatch) {
+              const hex = hexShortMatch[1];
+              return [
+                parseInt(hex[0] + hex[0], 16),
+                parseInt(hex[1] + hex[1], 16),
+                parseInt(hex[2] + hex[2], 16)
+              ];
+            }
+            
+            return null;
+          }
+          
+          function detectBackgroundColor(element) {
+            let targetElement;
+            
+            if (typeof element === 'string') {
+              const found = document.querySelector(element);
+              console.debug('Target element found:', found);
+              if (!found) return 'rgb(255, 255, 255)';
+              targetElement = found;
+            } else if (element) {
+              targetElement = element;
+            } else {
+              targetElement = document.body;
+            }
+            
+            let currentElement = targetElement;
+            
+            while (currentElement && currentElement !== document.documentElement) {
+              const computedStyle = window.getComputedStyle(currentElement);
+              const backgroundColor = computedStyle.backgroundColor;
+              
+              console.debug('Checking element:', currentElement.tagName, currentElement.id, currentElement.className);
+              console.debug('Background color:', backgroundColor);
+              
+              if (backgroundColor && backgroundColor !== 'rgba(0, 0, 0, 0)' && backgroundColor !== 'transparent') {
+                console.debug('Found background color:', backgroundColor, 'on element:', currentElement);
+                return backgroundColor;
+              }
+              
+              currentElement = currentElement.parentElement;
+            }
+            
+            const bodyStyle = window.getComputedStyle(document.body);
+            const bodyBackground = bodyStyle.backgroundColor;
+            console.debug('Body background:', bodyBackground);
+            if (bodyBackground && bodyBackground !== 'rgba(0, 0, 0, 0)' && bodyBackground !== 'transparent') {
+              return bodyBackground;
+            }
+            
+            const htmlStyle = window.getComputedStyle(document.documentElement);
+            const htmlBackground = htmlStyle.backgroundColor;
+            console.debug('HTML background:', htmlBackground);
+            if (htmlBackground && htmlBackground !== 'rgba(0, 0, 0, 0)' && htmlBackground !== 'transparent') {
+              return htmlBackground;
+            }
+            
+            console.debug('No background found, returning default white');
+            return 'rgb(255, 255, 255)';
+          }
+          
+          function autoSelectTheme(container) {
+            const backgroundColor = detectBackgroundColor(container);
+            const rgb = parseColor(backgroundColor);
+            
+            console.debug('TRAE Badge Plugin - Background detection:', {
+              container,
+              backgroundColor,
+              rgb
+            });
+            
+            if (!rgb) {
+              console.debug('TRAE Badge Plugin - No RGB found, using dark theme');
+              return 'dark';
+            }
+            
+            const [r, g, b] = rgb;
+            const luminance = getLuminance(r, g, b);
+            const selectedTheme = luminance > 128 ? 'dark' : 'light';
+            
+            console.debug('TRAE Badge Plugin - Theme selection:', {
+              luminance,
+              selectedTheme,
+              reason: luminance > 128 ? 'Light background -> Dark badge' : 'Dark background -> Light badge'
+            });
+            
+            return selectedTheme;
+          }
+        
+              
+              // 注入样式
+              const style = document.createElement('style');
+              style.id = 'trae-badge-plugin-styles';
+              style.textContent = css;
+              document.head.appendChild(style);
+              
+              // 创建 Badge 函数
+              function createBadge() {
+                // 移除已存在的 badge
+                const existingBadge = document.getElementById('trae-badge-plugin');
+                if (existingBadge) {
+                  existingBadge.remove();
+                }
+                
+                // 确定主题
+                let variant = 'dark';
+                if (true) {
+                  variant = autoSelectTheme('#root');
+                }
+                
+                const isDarkBackground = variant === 'dark';
+                const logoType = isDarkBackground ? 'light' : 'dark';
+                const cancelIcon = isDarkBackground ? cancelLight : cancelDark;
+                
+                const badge = document.createElement('div');
+                badge.id = 'trae-badge-plugin';
+                badge.className = `trae-badge trae-badge--${variant} trae-badge--bottom-right`;
+                badge.innerHTML = `
+                  <div class="trae-badge-content">
+                    <div class="trae-badge-logo">${logos[logoType]}</div>
+                    <div class="trae-badge-share">${shareIcon}</div>
+                  </div>
+                  <div class="trae-badge-cancel">${cancelIcon}</div>
+                `;
+                
+                // 添加点击事件
+                
+                badge.style.cursor = 'pointer';
+                badge.addEventListener('click', (e) => {
+                  if (e.target.closest('.trae-badge-cancel')) return;
+                  window.open('https://www.trae.ai/solo?showJoin=1', '_blank');
+                });
+                
+                
+                // 添加取消按钮事件
+                const cancelButton = badge.querySelector('.trae-badge-cancel');
+                if (cancelButton) {
+                  cancelButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    badge.remove();
+                  });
+                }
+                
+                document.body.appendChild(badge);
+                return badge;
+              }
+              
+              // 初始创建 badge
+              // 等待 React 组件渲染完成后再创建 badge
+              function initBadge() {
+                // 使用 requestAnimationFrame 等待渲染完成
+                requestAnimationFrame(() => {
+                  // 再次检查目标元素是否存在
+                  const targetElement = document.querySelector('#root');
+                  if (targetElement) {
+                    const badge = createBadge();
+                  } else {
+                    // 如果还没有找到，等待一段时间再试
                     setTimeout(() => {
-                        const success = this.tryCAS();
-                        if (success) {
-                            this.waiting = false;
-                            this.active = true;
-                            setTimeout(() => { this.active = false; }, 200);
-                        } else {
-                            // CAS 失败，稍后重试
-                            setTimeout(() => { this.waiting = false; }, 100);
-                        }
-                    }, Math.random() * 300 + 200);
-                }
-            }
-
-            tryCAS() {
-                // 模拟 CAS 操作，90% 成功率
-                if (Math.random() > 0.1) {
-                    // 检查是否超出车厢范围（两个车厢，共 16 个位置）
-                    if (globalOffset >= MAX_CARRIAGES * CARRIAGE_CAPACITY) {
-                        return false; // 车厢已满
-                    }
-
-                    const offset = globalOffset;
-                    globalOffset++;
-                    this.currentOffset = offset;
-                    updateStats();
-
-                    // 计算车厢和 SGM 位置
-                    const carriageIndex = Math.floor(offset / CARRIAGE_CAPACITY);
-                    const sgmIndex = offset % CARRIAGE_CAPACITY;
-
-                    // 确保车厢存在（最多两个车厢）
-                    while (carriages.length <= carriageIndex && carriages.length < MAX_CARRIAGES) {
-                        createNewCarriage();
-                    }
-
-                    const carriage = carriages[carriageIndex];
-                    if (!carriage || !carriage.mmapped) {
-                        return false; // 车厢未 mmap 完成
-                    }
-
-                    const sgmPos = this.getSGMPosition(carriageIndex, sgmIndex);
-
-                    // 创建 CAS 成功动画
-                    particles.push(new CASParticle(
-                        baseInfo.x,
-                        baseInfo.y + baseInfo.height / 2,
-                        sgmPos.x,
-                        sgmPos.y,
-                        offset,
-                        'write'
-                    ));
-
-                    return true;
-                }
-                return false;
-            }
-
-            getSGMPosition(carriageIndex, sgmIndex) {
-                const carriage = carriages[carriageIndex];
-                const sgmPerRow = 4;
-                const row = Math.floor(sgmIndex / sgmPerRow);
-                const col = sgmIndex % sgmPerRow;
-                return {
-                    x: carriage.x - carriage.width / 2 + 20 + col * (SGM_SIZE + 10) + SGM_SIZE / 2,
-                    y: carriage.y - carriage.height / 2 + 30 + row * (SGM_SIZE + 10) + SGM_SIZE / 2
-                };
-            }
-        }
-
-        class Consumer {
-            constructor(x, y, id) {
-                this.x = x;
-                this.y = y;
-                this.id = id;
-                this.width = 90;
-                this.height = 70;
-                this.lastConsumeTime = 0;
-                this.consumeInterval = 1500 + Math.random() * 1000;
-                this.consumerOffset = 0; // 每个消费者独立的 offset
-                this.waiting = false;
-                this.active = false;
-            }
-
-            draw() {
-                // Consumer box
-                ctx.fillStyle = this.active ? 'rgba(255, 107, 107, 0.4)' : 'rgba(255, 107, 107, 0.15)';
-                ctx.strokeStyle = colors.consumer;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height, 8);
-                ctx.fill();
-                ctx.stroke();
-
-                // Consumer icon
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('C' + (this.id + 1), this.x, this.y + 6);
-
-                // State label
-                ctx.font = '10px Arial';
-                ctx.fillStyle = this.waiting ? '#ffa500' : '#888';
-                ctx.fillText(this.waiting ? 'CAS...' : 'Consumer', this.x, this.y + this.height/2 + 12);
-            }
-
-            update(currentTime) {
-                if (!this.waiting && !this.active && currentTime - this.lastConsumeTime > this.consumeInterval) {
-                    this.waiting = true;
-                    this.lastConsumeTime = currentTime;
-
-                    // 尝试 CAS 获取消费 offset
-                    setTimeout(() => {
-                        if (this.consumerOffset >= globalOffset) {
-                            this.waiting = false;
-                            return;
-                        }
-
-                        const success = this.tryCAS();
-                        if (success) {
-                            this.waiting = false;
-                            this.active = true;
-                            setTimeout(() => { this.active = false; }, 200);
-                        } else {
-                            setTimeout(() => { this.waiting = false; }, 100);
-                        }
-                    }, Math.random() * 300 + 200);
-                }
-            }
-
-            tryCAS() {
-                if (Math.random() > 0.1) {
-                    const offset = this.consumerOffset;
-                    this.consumerOffset++;
-
-                    const carriageIndex = Math.floor(offset / CARRIAGE_CAPACITY);
-                    const sgmIndex = offset % CARRIAGE_CAPACITY;
-
-                    if (carriageIndex < carriages.length) {
-                        const carriage = carriages[carriageIndex];
-                        if (carriage.sgms[sgmIndex].state === 'readable') {
-                            const sgmPos = this.getSGMPosition(carriageIndex, sgmIndex);
-
-                            // 创建读取动画
-                            particles.push(new CASParticle(
-                                sgmPos.x,
-                                sgmPos.y,
-                                this.x - this.width / 2,
-                                this.y,
-                                offset,
-                                'read'
-                            ));
-
-                            // 标记为读取中
-                            carriage.sgms[sgmIndex].state = 'reading';
-                            setTimeout(() => {
-                                carriage.sgms[sgmIndex].state = 'idle';
-                            }, 800);
-
-                            consumedCount++;
-                            updateStats();
-                            return true;
-                        }
-                    }
-                }
-                return false;
-            }
-
-            getSGMPosition(carriageIndex, sgmIndex) {
-                const carriage = carriages[carriageIndex];
-                const sgmPerRow = 4;
-                const row = Math.floor(sgmIndex / sgmPerRow);
-                const col = sgmIndex % sgmPerRow;
-                return {
-                    x: carriage.x - carriage.width / 2 + 20 + col * (SGM_SIZE + 10) + SGM_SIZE / 2,
-                    y: carriage.y - carriage.height / 2 + 30 + row * (SGM_SIZE + 10) + SGM_SIZE / 2
-                };
-            }
-        }
-
-        class Carriage {
-            constructor(x, y, id) {
-                this.x = x;
-                this.y = y;
-                this.id = id;
-                this.width = 320;
-                this.height = 180;
-                this.sgms = [];
-                this.mmapped = false; // 是否已完成 mmap
-                for (let i = 0; i < CARRIAGE_CAPACITY; i++) {
-                    this.sgms.push({ state: 'idle', index: i });
-                }
-            }
-
-            draw() {
-                // 绘制 mmap 虚线连接磁盘和车厢
-                const diskX = this.id === 0 ? diskArea.x - 110 : diskArea.x + 110;
-                const diskY = diskArea.y - diskArea.height / 2 + 25;
-                const carriageBottomY = this.y + this.height / 2 + 20;
-
-                // 磁盘文件图标
-                ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
-                ctx.strokeStyle = '#667eea';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(diskX - 80, diskY - 25, 160, 50, 8);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.fillStyle = '#e0e0e0';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.id + '.carriage', diskX, diskY + 5);
-                ctx.font = '10px Arial';
-                ctx.fillStyle = '#888';
-                ctx.fillText('Disk File', diskX, diskY + 23);
-
-                // mmap 动态虚线
-                const dashOffset = (Date.now() / 50) % 20;
-                ctx.beginPath();
-                ctx.moveTo(diskX, diskY + 30);
-                ctx.lineTo(this.x, carriageBottomY);
-                ctx.strokeStyle = this.mmapped ? 'rgba(102, 126, 234, 0.5)' : 'rgba(102, 126, 234, 0.2)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([10, 10]);
-                ctx.lineDashOffset = -dashOffset;
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // mmap 标签
-                ctx.fillStyle = this.mmapped ? '#667eea' : '#888';
-                ctx.font = this.mmapped ? 'bold 11px Arial' : '11px Arial';
-                ctx.fillText(this.mmapped ? 'mmap()' : 'mapping...', diskX + 25, (diskY + carriageBottomY) / 2);
-
-                // Carriage box
-                ctx.fillStyle = colors.carriage;
-                ctx.strokeStyle = 'rgba(102, 126, 234, 0.4)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.roundRect(this.x - this.width/2, this.y - this.height/2, this.width, this.height, 10);
-                ctx.fill();
-                ctx.stroke();
-
-                // Carriage label
-                ctx.fillStyle = '#e0e0e0';
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('Carriage ' + this.id, this.x, this.y - this.height/2 - 8);
-
-                // SGMs
-                const sgmPerRow = 4;
-                for (let i = 0; i < this.sgms.length; i++) {
-                    const row = Math.floor(i / sgmPerRow);
-                    const col = i % sgmPerRow;
-
-                    const sgmX = this.x - this.width/2 + 20 + col * (SGM_SIZE + 10) + SGM_SIZE / 2;
-                    const sgmY = this.y - this.height/2 + 30 + row * (SGM_SIZE + 10) + SGM_SIZE / 2;
-
-                    // SGM color based on state
-                    let sgmColor;
-                    switch (this.sgms[i].state) {
-                        case 'idle':
-                            sgmColor = colors.sgmIdle;
-                            break;
-                        case 'writing':
-                            sgmColor = colors.sgmWriting;
-                            break;
-                        case 'readable':
-                            sgmColor = colors.sgmReadable;
-                            break;
-                        case 'reading':
-                            sgmColor = colors.sgmReading;
-                            break;
-                    }
-
-                    ctx.fillStyle = sgmColor;
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.roundRect(sgmX - SGM_SIZE/2, sgmY - SGM_SIZE/2, SGM_SIZE, SGM_SIZE, 5);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    // SGM index
-                    ctx.fillStyle = '#fff';
-                    ctx.font = 'bold 12px Arial';
-                    ctx.fillText(this.sgms[i].index, sgmX, sgmY + 4);
-                }
-            }
-        }
-
-        class CASParticle {
-            constructor(startX, startY, endX, endY, offset, type) {
-                this.startX = startX;
-                this.startY = startY;
-                this.endX = endX;
-                this.endY = endY;
-                this.offset = offset;
-                this.type = type; // 'write' or 'read'
-                this.progress = 0;
-                this.speed = 0.025;
-                this.complete = false;
-            }
-
-            update() {
-                this.progress += this.speed;
-                if (this.progress >= 1) {
-                    this.progress = 1;
-                    this.complete = true;
-
-                    if (this.type === 'write') {
-                        const carriageIndex = Math.floor(this.offset / CARRIAGE_CAPACITY);
-                        const sgmIndex = this.offset % CARRIAGE_CAPACITY;
-                        if (carriageIndex < carriages.length) {
-                            carriages[carriageIndex].sgms[sgmIndex].state = 'writing';
-                            producedCount++;
-                            updateStats();
-
-                            // 模拟写入时间
-                            setTimeout(() => {
-                                carriages[carriageIndex].sgms[sgmIndex].state = 'readable';
-                            }, 300);
-                        }
-                    }
-                }
-            }
-
-            draw() {
-                const x = this.startX + (this.endX - this.startX) * this.progress;
-                const y = this.startY + (this.endY - this.startY) * this.progress;
-
-                // Trail
-                ctx.beginPath();
-                ctx.moveTo(this.startX, this.startY);
-                ctx.lineTo(x, y);
-                ctx.strokeStyle = this.type === 'write'
-                    ? `rgba(78, 201, 176, ${0.5 * this.progress})`
-                    : `rgba(255, 107, 107, ${0.5 * this.progress})`;
-                ctx.lineWidth = 3;
-                ctx.stroke();
-
-                // Particle
-                ctx.beginPath();
-                ctx.arc(x, y, 10, 0, Math.PI * 2);
-                ctx.fillStyle = this.type === 'write' ? colors.producer : colors.consumer;
-                ctx.fill();
-
-                // Glow
-                ctx.beginPath();
-                ctx.arc(x, y, 15, 0, Math.PI * 2);
-                ctx.fillStyle = this.type === 'write'
-                    ? 'rgba(78, 201, 176, 0.3)'
-                    : 'rgba(255, 107, 107, 0.3)';
-                ctx.fill();
-
-                // Offset label
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('#' + this.offset, x, y - 20);
-            }
-        }
-
-        function createNewCarriage() {
-            const x = 320 + carriages.length * 320;
-            const y = 250;
-            const carriageId = carriages.length;
-            carriages.push(new Carriage(x, y, carriageId));
-
-            // 延迟完成 mmap
-            setTimeout(() => {
-                if (carriages[carriageId]) {
-                    carriages[carriageId].mmapped = true;
-                }
-            }, 2000);
-        }
-
-        function init() {
-            // 创建第一个车厢（快速完成 mmap）
-            const carriage1 = new Carriage(320, 250, 0);
-            carriage1.mmapped = true; // 立即完成 mmap
-            carriages.push(carriage1);
-
-            // 延迟创建第二个车厢
-            setTimeout(() => {
-                if (carriages.length < MAX_CARRIAGES) {
-                    createNewCarriage();
-                }
-            }, 3000);
-
-            // 创建生产者
-            for (let i = 0; i < NUM_PRODUCERS; i++) {
-                producers.push(new Producer(80, 150 + i * 100, i));
-            }
-
-            // 创建消费者
-            for (let i = 0; i < NUM_CONSUMERS; i++) {
-                consumers.push(new Consumer(920, 180 + i * 100, i));
-            }
-        }
-
-        function drawBackground() {
-            // Background
-            ctx.fillStyle = colors.bg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Grid
-            ctx.strokeStyle = colors.grid;
-            ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 40) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
-                ctx.stroke();
-            }
-            for (let i = 0; i < canvas.height; i += 40) {
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
-                ctx.stroke();
-            }
-
-            // Labels
-            ctx.fillStyle = '#666';
-            ctx.font = '13px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Producers', 80, 40);
-            ctx.fillText('BaseInfo', 500, 25);
-            ctx.fillText('Carriages (Shared Memory)', 560, 25);
-            ctx.fillText('Consumers', 920, 40);
-            ctx.fillText('Disk Files', 500, 400);
-
-            // Arrow labels
-            ctx.font = '11px Arial';
-            ctx.fillStyle = '#888';
-            ctx.fillText('CAS →', 200, 425);
-            ctx.fillText('→ Read', 800, 425);
-        }
-
-        function drawBaseInfo() {
-            // BaseInfo box
-            ctx.fillStyle = 'rgba(102, 126, 234, 0.15)';
-            ctx.strokeStyle = colors.baseInfo;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(baseInfo.x - baseInfo.width/2, baseInfo.y - baseInfo.height/2, baseInfo.width, baseInfo.height, 8);
-            ctx.fill();
-            ctx.stroke();
-
-            // Title
-            ctx.fillStyle = '#e0e0e0';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Global Offset', baseInfo.x, baseInfo.y - 8);
-
-            // Offset value
-            ctx.fillStyle = colors.baseInfo;
-            ctx.font = 'bold 20px Arial';
-            ctx.fillText(globalOffset.toString(), baseInfo.x, baseInfo.y + 15);
-        }
-
-        function updateStats() {
-            document.getElementById('statOffset').textContent = globalOffset;
-            document.getElementById('statProduced').textContent = producedCount;
-            document.getElementById('statConsumed').textContent = consumedCount;
-            document.getElementById('statCarriages').textContent = carriages.length;
-        }
-
-        function animate() {
-            if (!isRunning) return;
-
-            const currentTime = Date.now();
-
-            // Clear canvas
-            drawBackground();
-
-            // Draw BaseInfo
-            drawBaseInfo();
-
-            // Draw carriages
-            carriages.forEach(carriage => carriage.draw());
-
-            // Update and draw producers
-            producers.forEach(producer => {
-                producer.update(currentTime);
-                producer.draw();
-            });
-
-            // Update and draw consumers
-            consumers.forEach(consumer => {
-                consumer.update(currentTime);
-                consumer.draw();
-            });
-
-            // Update and draw particles
-            particles.forEach((particle, index) => {
-                particle.update();
-                particle.draw();
-            });
-
-            // Remove completed particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                if (particles[i].complete) {
-                    particles.splice(i, 1);
-                }
-            }
-
-            animationId = requestAnimationFrame(animate);
-        }
-
-        function startAnimation() {
-            if (!isRunning) {
-                isRunning = true;
-                if (!startTime) {
-                    startTime = Date.now();
-                    // 第一个生产者立即开始生产（从offset 0开始）
-                    producers[0].lastProduceTime = 0;
-                }
-                animate();
-            }
-        }
-
-        function pauseAnimation() {
-            isRunning = false;
-            cancelAnimationFrame(animationId);
-        }
-
-        function resetAnimation() {
-            pauseAnimation();
-            globalOffset = 0;
-            producedCount = 0;
-            consumedCount = 0;
-            startTime = null;
-            particles.length = 0;
-            carriages = [];
-            consumers.forEach(c => c.consumerOffset = 0);
-
-            // 创建第一个车厢（立即完成 mmap）
-            const carriage1 = new Carriage(320, 250, 0);
-            carriage1.mmapped = true;
-            carriages.push(carriage1);
-
-            // 延迟创建第二个车厢
-            setTimeout(() => {
-                if (carriages.length < MAX_CARRIAGES) {
-                    createNewCarriage();
-                }
-            }, 3000);
-
-            updateStats();
-
-            drawBackground();
-            drawBaseInfo();
-            carriages.forEach(carriage => carriage.draw());
-            producers.forEach(producer => producer.draw());
-            consumers.forEach(consumer => consumer.draw());
-        }
-
-        // Initialize
-        init();
-        resetAnimation();
-    </script>
+                      const badge = createBadge();
+                    }, 500);
+                  }
+                });
+              }
+              
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initBadge);
+              } else {
+                // DOM 已经加载完成，但 React 可能还没渲染
+                initBadge();
+              }
+              
+              window.TraeBadgePlugin = { 
+                destroy: () => {
+                  const badge = document.getElementById('trae-badge-plugin');
+                  if (badge) badge.remove();
+                  style.remove();
+                  delete window.TraeBadgePlugin;
+                },
+                recreate: createBadge
+              };
+            })();
+          </script>
+        
 </body>
 </html>
