@@ -270,6 +270,109 @@ export default function Home() {
           </div>
         </header>
 
+        <section className="mb-16">
+          <div className="bg-gray-800 rounded-lg p-8 border border-gray-700">
+            <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              什么是 JMemQueue
+            </h2>
+            <p className="text-gray-300 text-lg leading-relaxed mb-8 text-center max-w-4xl mx-auto">
+              JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进程通信（IPC）解决方案，利用内存映射文件（MappedByteBuffer）实现低延迟、高吞吐量的数据传输。
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-gray-900 rounded-lg p-6 border border-gray-600">
+                <div className="text-blue-400 mb-3">
+                  <Database className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-white">适用场景</h3>
+                <ul className="text-gray-400 text-sm space-y-2">
+                  <li>• 单机服务器环境</li>
+                  <li>• 多进程多服务高效通信</li>
+                  <li>• 单机场景替代 Kafka</li>
+                  <li>• 低延迟高吞吐量需求</li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-900 rounded-lg p-6 border border-gray-600">
+                <div className="text-green-400 mb-3">
+                  <Zap className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-white">核心特性</h3>
+                <ul className="text-gray-400 text-sm space-y-2">
+                  <li>• 零拷贝机制</li>
+                  <li>• CAS无锁并发</li>
+                  <li>• 高吞吐量</li>
+                  <li>• 负载均衡</li>
+                  <li>• 跨进程通信</li>
+                  <li>• 持久化存储</li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-900 rounded-lg p-6 border border-gray-600">
+                <div className="text-yellow-400 mb-3">
+                  <Cpu className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-bold mb-2 text-white">架构设计</h3>
+                <div className="text-gray-400 text-sm">
+                  <p className="mb-2 font-semibold text-gray-300">SMG 数据结构</p>
+                  <ul className="space-y-1 text-xs font-mono">
+                    <li className="flex justify-between">
+                      <span>状态</span>
+                      <span className="text-gray-500">0-3字节</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>数据大小</span>
+                      <span className="text-gray-500">4-7字节</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>实际数据</span>
+                      <span className="text-gray-500">8-1023字节</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-900 rounded-lg p-6 border border-gray-600">
+              <h3 className="text-xl font-bold mb-4 text-center text-white">性能基准测试</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-lg font-semibold mb-3 text-blue-400">Windows 环境</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">单线程吞吐量</span>
+                      <span className="text-green-400 font-bold">200万+ msg/s</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">4线程吞吐量</span>
+                      <span className="text-green-400 font-bold">600万+ msg/s</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-lg font-semibold mb-3 text-purple-400">Linux 环境</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">4线程吞吐量</span>
+                      <span className="text-green-400 font-bold">1800万+ msg/s</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-400">平均延迟</span>
+                      <span className="text-green-400 font-bold">&lt; 1 微秒</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-12">
+          <h2 className="text-3xl font-bold mb-6 text-center bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            流程演示
+          </h2>
+        </section>
+
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-blue-400">SMG 车厢映射视图</h2>
