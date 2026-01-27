@@ -68,17 +68,6 @@ public class JSharedMemProducer implements AutoCloseable {
         this.timeToLive = new TimeToLive(timeAlive, timeUnit);
     }
 
-    /**
-     * 必须关停所有消费者后执行
-     * 消费者清理 TOPIC
-     * 删除生产的数据
-     * 删除offset
-     */
-    public static void clean(JSharedMemBaseInfo jSharedMemBaseInfo) {
-        new JSharedMemCarriage(jSharedMemBaseInfo, 0L, null).clean();
-        jSharedMemBaseInfo.deleteBaseFile();
-    }
-
     @Override
     public void close() throws Exception {
         JSharedMemCarriage writeCarriage = threadLocalWriteCarriage.get();
