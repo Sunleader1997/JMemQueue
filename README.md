@@ -78,7 +78,7 @@ JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进
 <dependency>
     <groupId>io.github.sunleader1997</groupId>
     <artifactId>JMemQueue</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
@@ -88,7 +88,7 @@ JMemQueue 是一个基于 Java NIO 和共享内存技术构建的高性能跨进
 import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
 
 // 创建共享内存队列
-JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
+JSharedMemQueue queue = new JSharedMemQueue("my-topic");
 JSharedMemProducer producer = queue.createProducer();
 // 如果需要定义数据清理机制
 // producer.setTimeToLive(1, TimeUnit.DAYS);
@@ -106,7 +106,7 @@ import io.github.sunleader1997.jmemqueue.JSharedMemQueue;
 import io.github.sunleader1997.jmemqueue.JSharedMemReader;
 
 // 创建队列实例
-JSharedMemQueue queue = new JSharedMemQueue("my-topic", 2048);
+JSharedMemQueue queue = new JSharedMemQueue("my-topic");
 
 // 创建读取器
 JSharedMemReader reader = queue.createReader();

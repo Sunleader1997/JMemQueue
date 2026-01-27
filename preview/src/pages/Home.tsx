@@ -657,7 +657,7 @@ public class JMemQueueExample {
 {`<dependency>
     <groupId>io.github.sunleader1997</groupId>
     <artifactId>JMemQueue</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>`}
           </pre>
         </div>
