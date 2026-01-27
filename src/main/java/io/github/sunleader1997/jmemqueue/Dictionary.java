@@ -1,5 +1,6 @@
 package io.github.sunleader1997.jmemqueue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,5 +33,24 @@ public class Dictionary {
             throw new RuntimeException(e);
         }
         return dir;
+    }
+
+    public static void deleteTopic(String topic) {
+        boolean delete = deleteDirectory(getTopicDir(topic).toFile());
+        System.out.println("【DELETE】 TOPIC " + topic + " S " + delete);
+    }
+
+    public static boolean deleteDirectory(File directory) {
+        if (directory.isDirectory()) {
+            File[] files = directory.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (!deleteDirectory(file)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return directory.delete();
     }
 }

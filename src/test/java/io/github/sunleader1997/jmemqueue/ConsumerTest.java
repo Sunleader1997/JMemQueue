@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -89,6 +90,7 @@ public class ConsumerTest {
      */
     @Test
     public void createByParam() throws Exception {
+        Dictionary.deleteTopic("topic2");
         JSharedMemQueue queue = new JSharedMemQueue("topic2", ContentSize.KB_1, 100_000);
         // 创建元数据4B,容纳100_000的车厢
         try (JSharedMemProducer producer = queue.createProducer()) {
