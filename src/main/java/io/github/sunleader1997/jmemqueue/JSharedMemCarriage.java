@@ -40,7 +40,7 @@ public class JSharedMemCarriage implements AutoCloseable {
      */
     private static final int INDEX_SEGMENT_ARRAY = 0;
 
-    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive, FileChannel.MapMode mode) {
+    public JSharedMemCarriage(JSharedMemBaseInfo jSharedMemBaseInfo, long offset, TimeToLive timeToLive) {
         this.jSharedMemBaseInfo = jSharedMemBaseInfo;
         this.capacity = jSharedMemBaseInfo.readCarriage();
         this.msgSize = jSharedMemBaseInfo.readMsgMaxSize();
@@ -51,10 +51,9 @@ public class JSharedMemCarriage implements AutoCloseable {
         this.carriageFile = carriagePath.toFile();
         this.timeToLive = timeToLive == null ? JSharedMemQueue.DEF_TTL : timeToLive;
         System.out.println("【CARRIAGE】LOCATE AT [" + carriagePath + "] OFFSET BEGIN : " + offset);
-        mmap(mode);
     }
 
-    private void mmap(FileChannel.MapMode mode) {
+    public JSharedMemCarriage mmap(FileChannel.MapMode mode) {
         try {
             // read 模式下，文件必须存在
             if (FileChannel.MapMode.READ_ONLY.equals(mode)) {
@@ -73,6 +72,7 @@ public class JSharedMemCarriage implements AutoCloseable {
         } catch (Exception e) {
             this.exist = false;
         }
+        return this;
     }
 
     public boolean exist() {
@@ -100,7 +100,17 @@ public class JSharedMemCarriage implements AutoCloseable {
         });
     }
 
-    private void cleanFile() {
+    public void clean() {
+        JCleaner.clean(this.sharedMemory);
+        File[] files = listFiles((pathname) -> true);
+        // 如果文件被消费者占用是无法成功删除的，所以每次都得遍历一遍
+        for (File file : files) {
+            boolean remove = file.delete();
+            System.out.println("CLEAN DAT " + file.getName() + " STATUS: " + remove);
+        }
+    }
+
+    private void cleanByTTL() {
         long cleanBefore = timeToLive.getCleanBefore();
         File[] files = listFiles(pathname -> {
             return pathname.lastModified() < cleanBefore;
@@ -108,7 +118,7 @@ public class JSharedMemCarriage implements AutoCloseable {
         // 如果文件被消费者占用是无法成功删除的，所以每次都得遍历一遍
         for (File file : files) {
             boolean remove = file.delete();
-            System.out.printf("CLEAN DAT " + file.getName() + " STATUS: " + remove);
+            System.out.println("CLEAN DAT " + file.getName() + " STATUS: " + remove);
         }
     }
 
@@ -154,7 +164,7 @@ public class JSharedMemCarriage implements AutoCloseable {
             if (this.sharedMemory != null) {
                 JCleaner.clean(this.sharedMemory);
             }
-            this.cleanFile();
+            this.cleanByTTL();
         } catch (Exception e) {
             e.printStackTrace();
         }

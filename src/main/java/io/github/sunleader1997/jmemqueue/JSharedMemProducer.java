@@ -6,20 +6,14 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.TimeUnit;
 
 public class JSharedMemProducer implements AutoCloseable {
-    public static final int DEF_MSG_SIZE = 1000; // 默认生产单个数据不大于1KB
-    public static final int DEF_CAPACITY = 1024 * 1024;// 默认车厢承载 1024*1024 条数据（1GB）
     // 每个线程自己维护一个车厢，防止竞态
     private final ThreadLocal<JSharedMemCarriage> threadLocalWriteCarriage = new ThreadLocal<>();
 
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private TimeToLive timeToLive;
 
-    public JSharedMemProducer(String topic) {
-        this(topic, DEF_MSG_SIZE, DEF_CAPACITY, false);
-    }
-
-    public JSharedMemProducer(String topic, int msgMaxSize, int capacity, boolean overwrite) {
-        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, msgMaxSize, capacity, overwrite); // 基础信息
+    public JSharedMemProducer(JSharedMemBaseInfo jSharedMemBaseInfo) {
+        this.jSharedMemBaseInfo = jSharedMemBaseInfo; // 基础信息
         this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_WRITE); // 读写模式
         this.jSharedMemBaseInfo.flush(); // 写入磁盘
         this.jSharedMemBaseInfo.print();
@@ -45,7 +39,7 @@ public class JSharedMemProducer implements AutoCloseable {
     /**
      * 此方法能保证拿到正确的车厢
      */
-    public JSharedMemCarriage getCarriageForLocal(long offset) {
+    private JSharedMemCarriage getCarriageForLocal(long offset) {
         JSharedMemCarriage writeCarriage = threadLocalWriteCarriage.get();
         if (writeCarriage != null) {
             long compare = writeCarriage.compareTo(offset);
@@ -54,13 +48,13 @@ public class JSharedMemProducer implements AutoCloseable {
             } else {
                 threadLocalWriteCarriage.remove();
                 writeCarriage.close(); // 旧的车厢应该销毁
-                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_WRITE);
+                JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive).mmap(FileChannel.MapMode.READ_WRITE);
                 threadLocalWriteCarriage.set(newWriteCarriage);
                 if (compare > 0) System.out.println("!!! 方法调用有严重问题");
                 return newWriteCarriage;
             }
         } else {
-            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_WRITE);
+            JSharedMemCarriage newWriteCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive).mmap(FileChannel.MapMode.READ_WRITE);
             threadLocalWriteCarriage.set(newWriteCarriage);
             return newWriteCarriage;
         }
@@ -72,6 +66,17 @@ public class JSharedMemProducer implements AutoCloseable {
 
     public void setTimeToLive(long timeAlive, TimeUnit timeUnit) {
         this.timeToLive = new TimeToLive(timeAlive, timeUnit);
+    }
+
+    /**
+     * 必须关停所有消费者后执行
+     * 消费者清理 TOPIC
+     * 删除生产的数据
+     * 删除offset
+     */
+    public static void clean(JSharedMemBaseInfo jSharedMemBaseInfo) {
+        new JSharedMemCarriage(jSharedMemBaseInfo, 0L, null).clean();
+        jSharedMemBaseInfo.deleteBaseFile();
     }
 
     @Override

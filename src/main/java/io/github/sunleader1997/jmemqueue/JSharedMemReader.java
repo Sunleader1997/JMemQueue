@@ -23,7 +23,7 @@ public class JSharedMemReader implements AutoCloseable {
     private final JSharedMemBaseInfo jSharedMemBaseInfo;
     private final String group;
     private final File readerFile;
-    private boolean needClean = false;
+    private boolean needCleanFile = false;
     private TimeToLive timeToLive;
 
     private RandomAccessFile accessFile;
@@ -35,16 +35,13 @@ public class JSharedMemReader implements AutoCloseable {
     /**
      * 创建默认的消费者
      * 随机group，从头消费
-     *
-     * @param topic
      */
-    public JSharedMemReader(String topic) {
-        this(topic, UUID.randomUUID().toString());
-        needClean();
+    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo) {
+        this(jSharedMemBaseInfo, UUID.randomUUID().toString());
     }
 
-    public JSharedMemReader(String topic, String group) {
-        this.jSharedMemBaseInfo = new JSharedMemBaseInfo(topic, 0, 0, false); // 基础信息
+    public JSharedMemReader(JSharedMemBaseInfo jSharedMemBaseInfo, String group) {
+        this.jSharedMemBaseInfo = jSharedMemBaseInfo; // 基础信息
         this.jSharedMemBaseInfo.mmap(FileChannel.MapMode.READ_ONLY); // 读模式
         this.jSharedMemBaseInfo.print();
         this.group = group;
@@ -127,12 +124,12 @@ public class JSharedMemReader implements AutoCloseable {
             } else {
                 threadLocalReadCarriage.remove();
                 readCarriage.close();
-                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_ONLY);
+                JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive).mmap(FileChannel.MapMode.READ_ONLY);
                 threadLocalReadCarriage.set(newReadCarriage);
                 return newReadCarriage;
             }
         } else {
-            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive, FileChannel.MapMode.READ_ONLY);
+            JSharedMemCarriage newReadCarriage = new JSharedMemCarriage(jSharedMemBaseInfo, offset, timeToLive).mmap(FileChannel.MapMode.READ_ONLY);
             threadLocalReadCarriage.set(newReadCarriage);
             return newReadCarriage;
         }
@@ -150,18 +147,29 @@ public class JSharedMemReader implements AutoCloseable {
         return Dictionary.getTopicDir(jSharedMemBaseInfo.getTopic()).resolve(group + ".reader");
     }
 
-    public void needClean() {
-        this.needClean = true;
+    /**
+     * close 时删除客户端offset记录
+     */
+    public JSharedMemReader needCleanFile() {
+        this.needCleanFile = true;
+        return this;
     }
 
     public void setTimeToLive(long timeAlive, TimeUnit timeUnit) {
         this.timeToLive = new TimeToLive(timeAlive, timeUnit);
     }
 
-    public void print(){
+    public void print() {
         this.jSharedMemBaseInfo.print();
     }
 
+    /**
+     * 删除持久化文件
+     */
+    public void clean() {
+        boolean remove = this.readerFile.delete();
+        System.out.println("DELETE READER: " + this.readerFile.getName() + " STATUS " + remove);
+    }
 
     @Override
     public void close() {
@@ -177,10 +185,9 @@ public class JSharedMemReader implements AutoCloseable {
             if (this.channel != null) {
                 this.channel.close();
             }
-            if (this.needClean) {
-                JCleaner.clean(this.readerSharedMemory);
-                boolean remove = this.readerFile.delete();
-                System.out.println("DELETE READER: " + this.readerFile.getName() + " STATUS " + remove);
+            JCleaner.clean(this.readerSharedMemory);
+            if (this.needCleanFile) {
+                this.clean();
             }
         } catch (Exception e) {
             e.printStackTrace();

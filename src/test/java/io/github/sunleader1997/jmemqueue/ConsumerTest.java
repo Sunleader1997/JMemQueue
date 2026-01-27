@@ -1,5 +1,6 @@
 package io.github.sunleader1997.jmemqueue;
 
+import io.github.sunleader1997.jmemqueue.enums.ContentSize;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -19,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ConsumerTest {
 
     private static final int MESSAGE_COUNT = 1_000_000; // 总数据量
-    private static final int BUSINESS_THREAD_COUNT = 1; // 业务处理线程数
+    private static final int BUSINESS_THREAD_COUNT = 4; // 业务处理线程数
     private static final String TOPIC = "topic1";
 
     /**
@@ -53,8 +54,8 @@ public class ConsumerTest {
         for (int i = 0; i < BUSINESS_THREAD_COUNT; i++) {
             System.out.println("启动消费者线程: " + i);
             executor.execute(() -> {
-                // 创建同一个GROUP的消费者
-                try (JSharedMemReader reader = queue.createReader()) {
+                // 创建同一个GROUP的消费者,
+                try (JSharedMemReader reader = queue.createReader("group1")) {
                     while (!Thread.interrupted()) {
                         byte[] data = reader.dequeue();
                         if (data != null) {
@@ -87,45 +88,49 @@ public class ConsumerTest {
      * 通过自定义参数消费
      */
     @Test
-    public void createByParam() {
+    public void createByParam() throws Exception {
+        JSharedMemQueue queue = new JSharedMemQueue("topic2", ContentSize.KB_1, 100_000);
         // 创建元数据4B,容纳100_000的车厢
-        JSharedMemProducer producer = new JSharedMemProducer("topic2", 1000, 100_000, true);
-        producer.setTimeToLive(10, TimeUnit.SECONDS);
-        System.out.println("开始生产消息...");
-        for (int i = 0; i < MESSAGE_COUNT; i++) {
-            byte[] data = ByteBuffer.allocate(4)
-                    .order(ByteOrder.BIG_ENDIAN)
-                    .putInt(i)
-                    .array();
-            producer.enqueue(data);
+        try (JSharedMemProducer producer = queue.createProducer()) {
+            producer.setTimeToLive(10, TimeUnit.SECONDS);
+            System.out.println("开始生产消息...");
+            for (int i = 0; i < MESSAGE_COUNT; i++) {
+                byte[] data = ByteBuffer.allocate(4)
+                        .order(ByteOrder.BIG_ENDIAN)
+                        .putInt(i)
+                        .array();
+                producer.enqueue(data);
+            }
+            System.out.println("消息生产完成，总计: " + producer.getTotalOffset());
         }
-        System.out.println("消息生产完成，总计: " + producer.getTotalOffset());
     }
 
     @Test
     public void consumerByParam() {
+        JSharedMemQueue queue = new JSharedMemQueue("topic2");
         // 创建元数据4B,容纳100_000的车厢
-        JSharedMemReader reader = new JSharedMemReader("topic2");
-        AtomicLong consumedCount = new AtomicLong(0);
-        long startTime = System.currentTimeMillis();
-        while (true) {
-            byte[] bytes = reader.dequeue();
-            if (bytes == null) break;
-            int result = ByteBuffer.wrap(bytes)
-                    .order(ByteOrder.BIG_ENDIAN)
-                    .getInt();
-            if (result % 100_000 == 0) {
-                System.out.println("Consume At :" + result);
+        try (JSharedMemReader reader = queue.createReader()) {
+            AtomicLong consumedCount = new AtomicLong(0);
+            long startTime = System.currentTimeMillis();
+            while (true) {
+                byte[] bytes = reader.dequeue();
+                if (bytes == null) break;
+                int result = ByteBuffer.wrap(bytes)
+                        .order(ByteOrder.BIG_ENDIAN)
+                        .getInt();
+                if (result % 100_000 == 0) {
+                    System.out.println("Consume At :" + result);
+                }
+                consumedCount.incrementAndGet();
             }
-            consumedCount.incrementAndGet();
+            long totalDuration = System.currentTimeMillis() - startTime;
+            // 打印统计信息
+            System.out.println("\n========== 消费者测试统计 ==========");
+            System.out.println("成功消费消息数: " + consumedCount.get());
+            System.out.println("总耗时: " + totalDuration + " ms");
+            System.out.println("消费吞吐量: " + (consumedCount.get() * 1000L / totalDuration) + " msg/s");
+            System.out.println("业务线程数: " + BUSINESS_THREAD_COUNT);
+            System.out.println("===================================");
         }
-        long totalDuration = System.currentTimeMillis() - startTime;
-        // 打印统计信息
-        System.out.println("\n========== 消费者测试统计 ==========");
-        System.out.println("成功消费消息数: " + consumedCount.get());
-        System.out.println("总耗时: " + totalDuration + " ms");
-        System.out.println("消费吞吐量: " + (consumedCount.get() * 1000L / totalDuration) + " msg/s");
-        System.out.println("业务线程数: " + BUSINESS_THREAD_COUNT);
-        System.out.println("===================================");
     }
 }

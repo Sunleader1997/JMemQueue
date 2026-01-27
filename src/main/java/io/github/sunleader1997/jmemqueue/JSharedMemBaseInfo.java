@@ -36,15 +36,12 @@ public class JSharedMemBaseInfo implements AutoCloseable {
     /**
      * 创建基础信息映射，暂时还没写入
      */
-    public JSharedMemBaseInfo(String topic, int msgMaxSize, int carriage, boolean overwrite) {
+    public JSharedMemBaseInfo(String topic, int msgMaxSize, int carriage) {
         this.topic = topic;
         this.msgMaxSize = msgMaxSize;
         this.carriage = carriage;
         Path path = Dictionary.getAndMakeTopicDir(topic).resolve(topic + ".base");
         this.file = path.toFile();
-        if (overwrite) {
-            this.file.delete();
-        }
     }
 
     /**
@@ -127,6 +124,11 @@ public class JSharedMemBaseInfo implements AutoCloseable {
 
     public boolean isMapped() {
         return mapped;
+    }
+
+    public void deleteBaseFile() {
+        close();
+        this.file.delete();
     }
 
     @Override
