@@ -55,7 +55,6 @@ public class JSharedMemBaseInfo implements AutoCloseable {
             this.sharedBaseMemory = this.channel.map(mode, 0, BASE_SIZE);
             this.mapped = true;
         } catch (IOException e) {
-            System.out.println("数据挂载失败");
             this.mapped = false;
         }
     }
