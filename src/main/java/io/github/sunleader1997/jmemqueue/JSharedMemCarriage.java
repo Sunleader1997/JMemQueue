@@ -68,6 +68,8 @@ public class JSharedMemCarriage implements AutoCloseable {
                 this.accessFile = new RandomAccessFile(this.carriageFile, "rw");
                 this.channel = accessFile.getChannel();
                 this.sharedMemory = channel.map(mode, INDEX_SEGMENT_ARRAY, capacity * this.sgmSize);
+                // 生产模式下，更新lastmodified时间
+                this.carriageFile.setLastModified(System.currentTimeMillis());
             }
         } catch (Exception e) {
             this.exist = false;

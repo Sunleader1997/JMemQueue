@@ -32,7 +32,7 @@ public class ConsumerTest {
         // 创建共享内存队列
         JSharedMemQueue queue = new JSharedMemQueue(TOPIC);
         try (JSharedMemProducer producer = queue.createProducer()) {
-            producer.setTimeToLive(10, TimeUnit.SECONDS);
+            producer.setTimeToLive(5, TimeUnit.SECONDS);
             // 先生产一批消息
             System.out.println("开始生产消息...");
             for (int i = 0; i < MESSAGE_COUNT; i++) {
